@@ -11,11 +11,19 @@ from app.core.config import get_settings
 from app.core.database import Base
 from app.modules.sample_bot import models as sample_models
 from app.modules.finance import models as finance_models
+from app.modules.islamic import models as islamic_models
 from app.platform.bots import models as bot_models
 from app.platform.updates import models as update_models
 from app.platform.users import models as user_models
 
-_MODELS = (finance_models, sample_models, bot_models, update_models, user_models)
+_MODELS = (
+    finance_models,
+    islamic_models,
+    sample_models,
+    bot_models,
+    update_models,
+    user_models,
+)
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

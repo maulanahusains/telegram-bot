@@ -125,7 +125,7 @@ manual user seed, or restart is required.
 
 ## Database Tables
 
-The initial Alembic migration creates:
+The Alembic migrations create:
 
 - `telegram_bots`
 - `telegram_users`
@@ -137,6 +137,11 @@ The initial Alembic migration creates:
 - `finance_profiles`
 - `finance_budget_periods`
 - `finance_transactions`
+- `islamic_scopes`
+- `islamic_prayer_schedules`
+- `islamic_quran_progress`
+- `islamic_quran_sessions`
+- `islamic_quran_daily_stats`
 
 All timestamps are timezone-aware. Telegram identifiers use `BIGINT`, flexible
 state and metadata use PostgreSQL JSONB, and statuses use named PostgreSQL enums.
@@ -327,6 +332,32 @@ choice falls back to the base budget when its period ends.
 Daily alerts are enabled during setup at 08:00 Asia/Jakarta. Finalized periods
 show the original daily allocation and the remaining budget divided by remaining
 days; pending periods show the rollover controls instead.
+
+## Islamic Bot
+
+Provision this bot with module name `islamic`. It supports private chats, groups,
+and supergroups. State is isolated by bot and Telegram chat, so a private reading
+position never changes a group's shared reading position.
+
+```text
+/setup
+/quran
+/read 1p
+/read 5a
+/stats
+```
+
+`/setup` accepts a Telegram location, `city, country`, or coordinates with an
+optional IANA timezone. Private chats get Telegram's native location-request
+button; group users attach a location in reply to the setup prompt. AlAdhan
+provides monthly prayer times and calculation methods. The module sends a
+15-minute warning, the adhan reminder, and a Quran reminder 5-20 minutes later.
+
+Quran sessions use Al-Quran Cloud ayah images in batches of five. PC mode puts a
+Read button on every ayah; mobile mode confirms the whole batch from its final
+image. A chat has one shared session with a one-hour inactivity timeout. `/stats`
+reports the current position, rolling ayah totals, completed sessions, and
+reading streaks for that chat.
 
 ## Local Development
 

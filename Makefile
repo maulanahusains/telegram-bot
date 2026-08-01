@@ -20,7 +20,7 @@ docker-up:
 	docker compose --profile prod up --build
 
 docker-dev:
-	docker compose --profile dev up --build
+	docker compose --profile dev up --no-build --force-recreate
 
 docker-down:
 	docker compose down

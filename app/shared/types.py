@@ -28,6 +28,13 @@ class TelegramChat(BaseModel):
     last_name: str | None = None
 
 
+class TelegramLocation(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    latitude: float
+    longitude: float
+
+
 class TelegramMessage(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -38,6 +45,8 @@ class TelegramMessage(BaseModel):
     sender_chat: TelegramChat | None = None
     text: str | None = None
     caption: str | None = None
+    location: TelegramLocation | None = None
+    reply_to_message: TelegramMessage | None = None
 
 
 class TelegramCallbackQuery(BaseModel):

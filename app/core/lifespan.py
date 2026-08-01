@@ -86,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                         database=database,
                         settings=settings,
                         telegram=telegram,
+                        http=http,
                     ),
                 )
                 runtime = RuntimeBot(

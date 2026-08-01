@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+import httpx
 from pydantic import SecretStr
 
 from app.core.config import Settings
@@ -39,6 +40,7 @@ class BotDependencies:
     database: Database
     settings: Settings
     telegram: TelegramBotClient
+    http: httpx.AsyncClient
 
 
 BotFactory = Callable[[BotRuntimeConfig, BotDependencies], BaseBot]

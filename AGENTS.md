@@ -37,6 +37,23 @@ validation. These checks are performed manually by the developer. After an
 implementation, summarize the files and behavior changed and suggest relevant
 manual checks without executing them.
 
+## Graphify Maintenance
+
+When source code under `app/` changes, remind the developer once in the final
+handoff to refresh the knowledge graph. This applies when the agent changes the
+source in Implementor Mode or when the user states that they changed source code
+during the conversation. Use this exact reminder:
+
+> Reminder: source code berubah. Jalankan `/graphify . --update` untuk
+> memperbarui knowledge graph.
+
+Do not repeat the reminder in commentary updates, even when a task changes
+multiple source files. Changes limited to documentation, `AGENTS.md`, Docker,
+configuration, or migrations do not trigger it. The agent must not run the
+Graphify update; refreshing the graph remains the developer's manual
+responsibility. This reminder is not a test, lint, type check, build, or runtime
+validation step.
+
 ## Project Structure & Module Organization
 
 Application code lives in `app/`. HTTP endpoints are under `app/api/`, shared

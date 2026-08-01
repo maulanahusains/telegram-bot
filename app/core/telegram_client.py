@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar
 
@@ -65,10 +66,15 @@ class TelegramBotClient:
         self._http = http
         self._token = token
         self._settings = settings
+        self._identity: TelegramBotIdentity | None = None
 
     @property
     def _base_url(self) -> str:
         return f"https://api.telegram.org/bot{self._token.get_secret_value()}"
+
+    @property
+    def identity(self) -> TelegramBotIdentity | None:
+        return self._identity
 
     async def send_message(
         self,
@@ -130,15 +136,42 @@ class TelegramBotClient:
             "answerCallbackQuery", payload, bool, safe_retry=False
         )
 
+    async def edit_message_reply_markup(
+        self,
+        *,
+        chat_id: int,
+        message_id: int,
+        reply_markup: dict[str, Any] | None = None,
+    ) -> SentMessage:
+        return await self._typed_request(
+            "editMessageReplyMarkup",
+            {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "reply_markup": reply_markup or {"inline_keyboard": []},
+            },
+            SentMessage,
+            safe_retry=False,
+        )
+
     async def send_photo(
         self,
         *,
         chat_id: int,
         photo: str | InputFile,
         caption: str | None = None,
+        parse_mode: str | None = None,
+        reply_markup: dict[str, Any] | None = None,
     ) -> SentMessage:
         return await self._send_media(
-            "sendPhoto", "photo", chat_id, photo, caption, SentMessage
+            "sendPhoto",
+            "photo",
+            chat_id,
+            photo,
+            caption,
+            SentMessage,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
         )
 
     async def send_document(
@@ -160,10 +193,20 @@ class TelegramBotClient:
             safe_retry=False,
         )
 
-    async def get_me(self) -> TelegramBotIdentity:
+    async def set_my_commands(self, commands: list[dict[str, str]]) -> bool:
         return await self._typed_request(
+            "setMyCommands",
+            {"commands": commands},
+            bool,
+            safe_retry=True,
+        )
+
+    async def get_me(self) -> TelegramBotIdentity:
+        identity = await self._typed_request(
             "getMe", {}, TelegramBotIdentity, safe_retry=True
         )
+        self._identity = identity
+        return identity
 
     async def get_webhook_info(self) -> WebhookInfo:
         return await self._typed_request(
@@ -204,10 +247,17 @@ class TelegramBotClient:
         media: str | InputFile,
         caption: str | None,
         result_type: type[T],
+        *,
+        parse_mode: str | None = None,
+        reply_markup: dict[str, Any] | None = None,
     ) -> T:
         data: dict[str, Any] = {"chat_id": str(chat_id)}
         if caption is not None:
             data["caption"] = caption
+        if parse_mode is not None:
+            data["parse_mode"] = parse_mode
+        if reply_markup is not None:
+            data["reply_markup"] = json.dumps(reply_markup)
         files: dict[str, tuple[str, bytes, str]] | None = None
         if isinstance(media, InputFile):
             files = {
