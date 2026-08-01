@@ -1,0 +1,2 @@
+"""Trusted bot module namespace."""
+
