@@ -9,7 +9,7 @@ Date: 2026-08-15
 
 Decision: Implement Life as one new module within the existing FastAPI/PostgreSQL modular monolith, with internal domain packages rather than microservices.
 
-Context: FACT — `app/core/module_discovery.py` discovers registered packages under `app/modules/`; `app/core/lifespan.py` composes one process/database runtime. Finance and Islamic already use this pattern.
+Context: FACT — `backend/app/core/module_discovery.py` discovers registered packages under `backend/app/modules/`; `backend/app/core/lifespan.py` composes one process/database runtime. Finance and Islamic already use this pattern.
 
 Alternatives considered: separate services; separate database; a standalone frontend-only product.
 
@@ -22,7 +22,7 @@ Date: 2026-08-15
 
 Decision: Life-owned personal tables should reference `telegram_users.id` as `owner_user_id` (or a semantically named foreign key to that table), not `bot_users.id` and not a chat ID.
 
-Context: FACT — `telegram_users` is globally unique on `telegram_user_id`; `bot_users` is unique only per `(bot_id, user_id)` (`app/platform/users/models.py`). Finance data references `bot_user_id`; Islamic data is chat-scoped. CONFIRMED REQUIREMENT — Life personal data must be a person’s data and may be accessed through Mini App/web and a Life bot, while a group is merely a notification destination.
+Context: FACT — `telegram_users` is globally unique on `telegram_user_id`; `bot_users` is unique only per `(bot_id, user_id)` (`backend/app/platform/users/models.py`). Finance data references `bot_user_id`; Islamic data is chat-scoped. CONFIRMED REQUIREMENT — Life personal data must be a person’s data and may be accessed through Mini App/web and a Life bot, while a group is merely a notification destination.
 
 Alternatives considered: `bot_users.id`; Telegram chat ID; a new application-user table immediately.
 
@@ -59,7 +59,7 @@ Date: 2026-08-15
 
 Decision: Authenticate the MVP frontend by server-side verification of Telegram WebApp `initData`, resolve/upsert the existing global Telegram user, and issue a short-lived backend API session/token. Do not trust a browser-supplied Telegram ID.
 
-Context: CONFIRMED REQUIREMENT — Telegram Mini App authentication is primary. FACT — current authentication only verifies webhook secret tokens and an admin bearer key (`app/api/webhook.py`, `app/api/admin.py`).
+Context: CONFIRMED REQUIREMENT — Telegram Mini App authentication is primary. FACT — current authentication only verifies webhook secret tokens and an admin bearer key (`backend/app/api/webhook.py`, `backend/app/api/admin.py`).
 
 Consequences: add a separate user-auth API boundary. Standalone browser behavior is a deferred unauthenticated fallback unless a future login option is approved.
 
@@ -70,7 +70,7 @@ Date: 2026-08-15
 
 Decision: Build a generic Life reminder persistence/claim interface in PostgreSQL. Initially run one explicitly configured executor with the FastAPI deployment; keep its ownership/claim API independent so it can move to a separate worker process without domain changes.
 
-Context: FACT — Finance and Islamic use 30-second in-process `asyncio` tasks with durable database state/claims (`app/modules/finance/services.py`, `app/modules/islamic/services.py`). No queue/broker/worker dependency is installed (`pyproject.toml`).
+Context: FACT — Finance and Islamic use 30-second in-process `asyncio` tasks with durable database state/claims (`backend/app/modules/finance/services.py`, `backend/app/modules/islamic/services.py`). No queue/broker/worker dependency is installed (`backend/pyproject.toml`).
 
 Alternatives considered: Celery/Redis, APScheduler, a dedicated worker immediately, in-memory-only timers.
 
@@ -81,7 +81,7 @@ Consequences: no new infrastructure for MVP. Deployment must ensure a single des
 Status: Accepted
 Date: 2026-08-15
 
-Decision: Use `app/modules/life/` with internal `planner`, `nutrition`, `fitness`, `grocery`, and shared Life application/transport code. Do not register these as independent runtime bot modules initially.
+Decision: Use `backend/app/modules/life/` with internal `planner`, `nutrition`, `fitness`, `grocery`, and shared Life application/transport code. Do not register these as independent runtime bot modules initially.
 
 Context: CONFIRMED REQUIREMENT — these are logical product boundaries, not microservices. FACT — module registry operates at bot-module level; all Life features need shared profile, Today aggregation, API, and reminder integration.
 

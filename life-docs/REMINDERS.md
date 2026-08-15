@@ -10,7 +10,7 @@
 
 ### Finance pattern — facts
 
-`FinanceAlertScheduler` in `app/modules/finance/services.py` starts an `asyncio.Task` from `FinanceBot.start()`, ticks every 30 seconds, calls `FinanceService.claim_due_alerts()`, sends via `FinanceBot.deliver_alert()`, and calls complete/release. `finance_profiles` persists alert time/timezone/chat, last alert, and claim fields. Service methods use transactions and locks.
+`FinanceAlertScheduler` in `backend/app/modules/finance/services.py` starts an `asyncio.Task` from `FinanceBot.start()`, ticks every 30 seconds, calls `FinanceService.claim_due_alerts()`, sends via `FinanceBot.deliver_alert()`, and calls complete/release. `finance_profiles` persists alert time/timezone/chat, last alert, and claim fields. Service methods use transactions and locks.
 
 ### Islamic pattern — facts
 
@@ -89,12 +89,12 @@ sequenceDiagram
 
 ## Retry, failure, and missed semantics
 
-**PROPOSAL:** classify Telegram failures from existing `TelegramAPIError`/HTTP detail into retryable (timeout/network/429/5xx) and permanent (invalid chat, blocked bot, malformed request). Use bounded attempts with exponential backoff and jitter, respecting Telegram retry-after where safely available.
+**CONFIRMED POLICY / PROPOSAL FOR DEFAULT:** use one configuration-driven late-delivery grace period for all MVP one-time reminder kinds, initially planned at 60 minutes. Do not create reminder-kind-specific policies unless a concrete product requirement later requires them. Classify Telegram failures from existing `TelegramAPIError`/HTTP detail into retryable (timeout/network/429/5xx) and permanent (invalid chat, blocked bot, malformed request). Use bounded attempts with exponential backoff and jitter, respecting Telegram retry-after where safely available.
 
 - A claim lease prevents a crashed worker from permanently holding work. On lease expiry, a new executor can reclaim if attempts remain.
 - A permanent invalid/bot-blocked destination marks that destination disabled with safe reason and marks occurrence failed; it does not delete the person’s reminder.
 - A retryable exhausted occurrence becomes failed and is visible in Planner/Today/history.
-- **Proposed missed policy:** a one-time item may send once if within configured grace; otherwise `missed`. Recurrences do not bulk catch up. User must confirm grace duration/product UI.
+- **Accepted missed policy:** a one-time item may send once if within configured grace; otherwise it becomes `missed`. Recurrences do not bulk catch up and continue from their next valid occurrence. The exact configured default remains an implementation parameter (planned: 60 minutes).
 - Outgoing Telegram delivery is inherently at-least-once in the narrow window after Telegram accepts send but before local success commit. Store Telegram message ID when returned and use claim tokens/unique occurrence; document possible rare duplicate delivery, as current README does for webhook replies.
 
 ## Restart and multi-process behavior
@@ -116,7 +116,7 @@ No Celery/Redis/APScheduler is required by this path. Introduce a broker only wh
 
 ## Notification destinations and inline actions
 
-Destination is a persisted owner-authorized record, not a chat ID supplied at send time. Default initially to the user’s private chat captured through verified bot interaction/Mini App context. Group destinations are optional and explicitly opt-in.
+Destination is a persisted owner-authorized record, not a chat ID supplied at send time. Private chats, groups, and supergroups are MVP destination types. Every destination starts inactive and must be explicitly selected/enabled by its owner; adding the bot to a group or opening Mini App from it never selects it. Activation validates that the chat is known and that the selected Life bot can deliver to it. UI must warn that a group destination exposes notification content to group members.
 
 Inline completion callback data must contain an opaque occurrence/action identifier, not trusted owner data. On webhook callback, resolve normal Telegram `UserContext`, verify occurrence ownership, then make an idempotent transition. This is required because a group notification can be clicked by someone other than its owner.
 

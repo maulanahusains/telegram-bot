@@ -1,5 +1,7 @@
 # Docker assets
 
-The production image and Compose definition live at the repository root so
-`docker compose up --build` works without additional flags. This directory is
-reserved for deployment-specific extensions such as reverse-proxy configuration.
+The backend Dockerfile lives in `backend/Dockerfile`; its build context is the
+`backend/` directory. The workspace-level Compose definition remains at
+`../docker-compose.yml` so it can orchestrate PostgreSQL, the backend, the
+development Cloudflare Tunnel, and a future frontend. This directory is reserved
+for backend deployment-specific extensions such as reverse-proxy configuration.

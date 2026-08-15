@@ -2,7 +2,7 @@
 
 ## Boundary and conventions
 
-**FACT:** current API endpoints are `/health`, `/admin/*`, and `/webhook/{bot_name}`. `app/core/middleware.py` returns `{ok: false, error: {code, message, request_id}}` for application errors; webhook success uses `{ok: true, status: ...}`. There is no versioned user API.
+**FACT:** current API endpoints are `/health`, `/admin/*`, and `/webhook/{bot_name}`. `backend/app/core/middleware.py` returns `{ok: false, error: {code, message, request_id}}` for application errors; webhook success uses `{ok: true, status: ...}`. There is no versioned user API.
 
 **PROPOSAL:** add a separate, user-authenticated API namespace such as `/api/v1/`. This avoids collision with webhook/admin routes and gives frontend contracts a version boundary. Reuse the existing error envelope/request ID convention. User API success responses should use typed resource/envelope schemas, not Telegram response text.
 
@@ -16,7 +16,7 @@ All routes below are planning contracts, not implementation requirements. They d
 | `GET /api/v1/auth/me` | Return authenticated Life profile/bootstrap identity and auth expiry. |
 | `POST /api/v1/auth/logout` | Revoke/delete server session. |
 
-Outside Telegram, `POST /auth/telegram` rejects absent/invalid initData with an explicit unauthenticated error. Browser login is deferred, not silently replaced by an insecure user-ID parameter.
+Outside Telegram, `POST /api/v1/auth/telegram` rejects absent/invalid initData with an explicit unauthenticated error. Browser login is deferred, not silently replaced by an insecure user-ID parameter.
 
 ## Endpoint groups
 
@@ -31,7 +31,8 @@ Today is a read-model/use-case response, not necessarily its own table. It may c
 
 - `GET/PATCH /api/v1/life/profile` — display profile/timezone/basic settings.
 - `GET/POST /api/v1/life/nutrition-goals`; `PATCH` a current/future goal by ID — preserve effective-dated history rather than mutating past data.
-- `GET/POST/PATCH /api/v1/life/notification-destinations` — ownership-scoped destination setup/default/enablement.
+- `GET/POST/PATCH /api/v1/life/notification-destinations` — ownership-scoped private/group/supergroup destination registration/default configuration.
+- `POST /api/v1/life/notification-destinations/{id}/activate` and `/validate` — explicit owner action to validate bot/chat delivery eligibility and enable a destination; creation, bot installation, or launch context never activates it implicitly.
 
 ### Planner
 
@@ -80,7 +81,7 @@ List responses include derived estimated total only when each item’s quantity/
 
 1. Authentication resolves exactly one server-side `telegram_users.id`.
 2. All personal Life repository operations filter by it, including nested child resources.
-3. A request can select a notification destination only when it is owned/enabled by the authenticated person.
+3. A request can select a notification destination only when it is owned and explicitly enabled by the authenticated person; server verifies the configured Life bot/chat eligibility before activation.
 4. Telegram inline actions must validate both callback action target ownership and the sender’s `UserContext.internal_user_id`; a message in a shared group cannot grant another user authority over the owner’s Life data.
 5. Administrative `/admin` bearer operations remain distinct from end-user session auth.
 

@@ -22,9 +22,9 @@ services:
   app:
     profiles: ["prod"]
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    env_file: .env
+    env_file: ./.env
     command:
       [
         "sh",
@@ -54,9 +54,9 @@ services:
   app-dev:
     profiles: ["dev"]
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    env_file: .env
+    env_file: ./.env
     environment:
       APP_ENV: development
     command:
@@ -67,9 +67,9 @@ services:
       ]
 
     volumes:
-      - ./app:/app/app
-      - ./migrations:/app/migrations
-      - ./alembic.ini:/app/alembic.ini
+      - ./backend/app:/app/app
+      - ./backend/migrations:/app/migrations
+      - ./backend/alembic.ini:/app/alembic.ini
     ports:
       - "${APP_PORT:-8000}:8000"
     depends_on:

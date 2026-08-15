@@ -8,6 +8,29 @@ keeps update and conversation state isolated by bot.
 The project targets Python 3.13 and uses FastAPI, SQLAlchemy 2 async, asyncpg,
 Alembic, Pydantic v2, httpx, structlog, `uv`, PostgreSQL, and Docker Compose.
 
+## Workspace locations
+
+This document describes the backend located in `backend/`. Run backend-local
+commands from this directory. The single authoritative local environment file is
+`../.env`; backend Make targets explicitly export it before running Uvicorn or
+Alembic. The Compose stack remains at repository root, so run `docker compose`
+there (or use the backend Make targets, which pass `-f ../docker-compose.yml`).
+
+For a direct `uv run` command instead of a Make target, explicitly load the same
+root environment in that shell first:
+
+```bash
+set -a; . ../.env; set +a
+uv run alembic current
+```
+
+Copy the root example once when setting up a workspace:
+
+```bash
+cp .env.example .env
+cd backend
+```
+
 ## Architecture
 
 This is one deployable application and one database, not a collection of
@@ -153,9 +176,7 @@ Normal operation should disable bot records instead of deleting them.
 
 Copy the example and edit it:
 
-```bash
-cp .env.example .env
-```
+The root `.env` described above is shared by Compose and backend-local commands.
 
 Generate a credential-encryption key:
 
@@ -196,7 +217,7 @@ global Telegram secret environment variable.
 
 ## Docker Deployment
 
-After configuring `.env`:
+After configuring the root `.env`, run from this `backend/` directory:
 
 ```bash
 make docker-up
@@ -209,20 +230,21 @@ There are no sleep-based startup scripts.
 
 ### Development profile
 
-Set `CLOUDFLARE_TUNNEL_TOKEN` in `.env`, then start the development application
+Set `CLOUDFLARE_TUNNEL_TOKEN` in the root `.env`, then start the development application
 and Cloudflare Tunnel together:
 
 ```bash
 make docker-dev
 ```
 
-The `dev` profile bind-mounts `app`, `migrations`, and `alembic.ini`, runs
+The `dev` profile bind-mounts `backend/app`, `backend/migrations`, and
+`backend/alembic.ini`, runs
 Uvicorn with auto-reload, sets `APP_ENV=development`, and waits for the app to
 be healthy before starting `cloudflared`. The tunnel's remotely configured
 origin should use `http://app-dev:8000` because it runs inside the Compose
 network. Development logs are available with `make docker-dev-logs`.
 
-Check service state:
+From repository root, check service state:
 
 ```bash
 docker compose ps
@@ -235,7 +257,8 @@ operator action, not a database seed.
 
 ### Provision the sample bot
 
-The command prompts for both secrets without placing them in shell history:
+From repository root, the command prompts for both secrets without placing them
+in shell history:
 
 ```bash
 docker compose run --rm app \
@@ -367,7 +390,7 @@ Install dependencies:
 uv sync --locked
 ```
 
-For an application running on the host, change the database hostname in `.env`
+For an application running on the host, change the database hostname in root `.env`
 from `postgres` to `localhost`, start PostgreSQL, then run:
 
 ```bash
@@ -554,7 +577,7 @@ have been rewritten.
 **Migration cannot reach PostgreSQL**
 
 Inside Compose, `DATABASE_URL` must use hostname `postgres`. From the host it
-normally uses `localhost`. Inspect `docker compose logs postgres migrate`.
+normally uses `localhost`. From repository root, inspect `docker compose logs postgres`.
 
 **Bot is absent from the runtime registry**
 

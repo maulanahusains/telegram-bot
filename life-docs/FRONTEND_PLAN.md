@@ -8,7 +8,7 @@ Use a small data-fetching layer such as TanStack Query for server state, native 
 
 ## Location and deployment
 
-`frontend/` is not created in this task. If/when repository is reorganized, it is a root sibling of `backend/` and permanent `life-docs/`:
+`frontend/` is not created in this task. Phase 0A relocates the backend first; then `frontend/` is created in Phase 1.5 as a root sibling of `backend/` and permanent `life-docs/`:
 
 ```text
 project-root/

@@ -2,7 +2,7 @@
 
 ## Modeling rules
 
-- **PROPOSAL:** canonical owner foreign keys point to existing `telegram_users.id` and are named `owner_user_id` in Life tables.
+- **ACCEPTED:** canonical owner foreign keys point to existing `telegram_users.id` and are named `owner_user_id` in Life tables.
 - **FACT:** PostgreSQL/SQLAlchemy async is the current persistence stack and uses `JSONB` where flexible transient data is needed. Stable, queryable Life data below is intentionally relational rather than a JSON blob.
 - **PROPOSAL:** store instants as timezone-aware UTC timestamps; validate/store IANA timezone names; use local dates only where a user’s calendar day matters.
 - **PROPOSAL:** table names use `life_` prefixes because current module tables use module prefixes (`finance_*`, `islamic_*`). Names are planning names, not migrations.
@@ -37,13 +37,13 @@ Relationships: `life_profiles`; Today/Progress query the goal effective for a da
 
 Purpose: selectable outbound Telegram destination, separate from ownership.
 
-Ownership: `owner_user_id → telegram_users.id`; optional `telegram_chat_id → telegram_chats.telegram_chat_id` or a direct FK to `telegram_chats.id` chosen consistently during implementation.
+Ownership: `owner_user_id → telegram_users.id`; `chat_id` references the existing known Telegram-chat identity using one consistently selected FK representation during implementation.
 
-Major fields: `id`, `owner_user_id`, `chat_id`, `kind` (`private`, `group`, `supergroup`), `label`, `enabled`, `is_default`, `verified_at`, `disabled_reason`, timestamps.
+Major fields: `id`, `owner_user_id`, `bot_id → telegram_bots.id`, `chat_id`, `kind` (`private`, `group`, `supergroup`), `label`, `enabled`, `is_default`, `activated_at`, `verified_at`, `disabled_reason`, timestamps.
 
-Constraints/indexes: unique `(owner_user_id, chat_id)`; partial unique default destination per owner if PostgreSQL migration supports it; index `(owner_user_id, enabled)`.
+Constraints/indexes: unique `(owner_user_id, bot_id, chat_id)`; partial unique default destination per owner if PostgreSQL migration supports it; index `(owner_user_id, enabled)` and `(bot_id, chat_id)`. Service validates `bot_id` has module `life` and chat type matches known `telegram_chats` record.
 
-Relationships: referenced by reminders/routines/workouts. `chat_id` is never ownership. The bot must be able to send to the destination; failed sends can disable/mark it invalid.
+Relationships: referenced by reminders/routines/workouts. `chat_id` is never ownership. A destination begins inactive; the owner explicitly activates it after backend checks it is known and the selected Life bot can send to it. Failed sends can disable/mark it invalid. Group/supergroup destinations are MVP, with UI warning that notifications are visible to chat members.
 
 ## Planner
 

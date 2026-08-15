@@ -4,167 +4,258 @@
 
 - Read `README.md`, `STATE.md`, `DECISIONS.md`, and this file before production changes.
 - Complete a phase’s criteria before starting the next. Update `STATE.md` and record decision changes.
-- Current repository policy says agents must not run tests/linters/builds unless user scope changes it. “Tests” below are intended developer/approved future verification work, not authorization to run them now.
-- `life-docs/` remains root-level throughout all phases.
+- Current repository policy says agents must not run tests, linters, builds, formatters, type checks, or automated runtime validation unless the user explicitly changes that policy. “Verification” below describes work a developer/authorized future task should perform; it does not authorize it now.
+- `life-docs/` remains at project root throughout every phase.
+- No Life feature, table, migration, Mini App auth, or reminder table is part of Phase 0A/0B.
 
-## Phase 0 — Confirm decisions and prepare repository baseline
+## Phase 0A — Isolated backend relocation
 
-Objective: turn proposed architectural choices into accepted scope and choose repository-layout timing before code/migrations.
+Objective: move only the existing backend from root into `backend/` and update path-sensitive backend/root-stack configuration. Follow `RELOCATION_PLAN.md` exactly.
 
-Expected files/modules affected: only `life-docs/DECISIONS.md`, `STATE.md`, and potentially planning docs. If relocation is approved now, create a separate dedicated relocation plan/PR before feature files.
+Expected files/modules affected: existing backend-owned `backend/app/`, `backend/migrations/`, `backend/Dockerfile`, `backend/pyproject.toml`, `backend/uv.lock`, `backend/alembic.ini`, `backend/Makefile`, backend README, and Docker support documentation; root `docker-compose.yml`, root README/ignore files as required by relocation. No Life module/files.
+
+Migrations: none created, modified, or applied.
+
+Verification: use only the planned commands in `RELOCATION_PLAN.md` when authorized by repository policy; otherwise perform read-only path/diff inspection and report skipped checks.
+
+Prerequisites: none; DEC-013 is accepted.
+
+Deliverable: `backend/` is independently runnable from its directory; root Compose still orchestrates PostgreSQL/backend/tunnel with explicit `backend/` paths; `life-docs/` stays root-level.
+
+Out of scope: all Life features, frontend, schema changes, authentication, functional refactors, production behavior changes, Compose architecture redesign.
+
+Completion criteria: no runtime/Alembic/Compose/Makefile path points to obsolete root backend paths; Git identifies moves cleanly; no Life migration exists.
+
+## Phase 0B — Baseline verification and documentation update
+
+Objective: verify relocation under authorized policy, correct documentation/commands, and record precise post-move state.
+
+Expected files/modules affected: backend/root README(s), `life-docs/STATE.md`, `HANDOFF.md`, `RELOCATION_PLAN.md` verification record; fix only relocation defects discovered by verification.
 
 Migrations: none.
 
-Tests/verification: inventory existing tests (none found during planning), agree test tooling/commands and manual verification expectation; do not execute automated checks without authorization.
+Verification: commands listed in `RELOCATION_PLAN.md`; inspect `git status`/diff and migration head only if authorized.
 
-Prerequisites: user confirmation of canonical identity, destination scope, missed policy, session approach direction, and relocation timing.
+Prerequisites: Phase 0A complete.
 
-Deliverable: accepted ADRs; a clean decision whether current root layout remains through Phase 3 or backend relocation precedes Phase 1.
+Deliverable: documented, reproducible post-relocation developer/deployment commands and verification status.
 
-Out of scope: Life code, frontend scaffold, API routes, migrations, scheduler.
+Out of scope: any Life persistence/API/frontend code.
 
-Completion criteria: every blocking proposed decision is accepted/rejected/superseded; `STATE.md` names the next executable phase.
+Completion criteria: relocation checklist is closed or explicit blocker is recorded; `STATE.md` advances to Phase 1.
 
-## Phase 1 — User authentication and application API foundation
+## Phase 1 — Mini App authentication and user-facing API foundation
 
-Objective: add a secure user-facing API boundary and Telegram Mini App identity exchange without Life domain data.
+Objective: add a secure user API boundary, server-side Telegram WebApp `initData` verification, global Telegram identity resolution, and short-lived authenticated session context.
 
-Expected files/modules affected: likely `app/main.py`, new `app/api/...` user/auth route(s), `app/core/config.py`, new/extended auth/session service/repository/model files, `app/shared/exceptions.py`, `app/shared/responses.py`, migrations, and documentation. Exact layout depends on Phase 0 repository decision.
+Expected files/modules affected: under `backend/`, likely `backend/app/main.py`, new user auth/API route(s), config, auth/session services/repositories/models, shared exceptions/responses, Alembic migration; root/deployment config only when session origin requires it.
 
-Migrations: application session table if server-side sessions are accepted; no Life feature tables yet. If a session model is not persisted, document revocation/expiry alternative before implementation.
+Migrations: application session table only if server-side PostgreSQL sessions are chosen. No Life domain tables.
 
-Tests/verification: signature-validation unit tests using Telegram-compatible fixtures; session expiry/revocation tests; endpoint auth/ownership baseline tests; manual Mini App launch check once frontend exists.
+Verification: signature validation fixtures, session expiry/revocation, unauthenticated API behavior, preservation of webhook/admin auth.
 
-Prerequisites: accepted session/deployment/CORS strategy and current Telegram WebApp verification specification review.
+Prerequisites: Phase 0A/0B complete; review current Telegram WebApp verification specification; decide same-site cookie versus separate-origin token strategy.
 
-Deliverable: server-side verified Telegram initData → existing `telegram_users` resolution/upsert → short-lived authenticated API context; `/api/v1` (or accepted prefix) error/auth conventions.
+Deliverable: verified `initData` resolves/upserts existing `telegram_users` and establishes authenticated API context under `/api/v1` (or accepted equivalent).
 
-Out of scope: independent browser login, frontend scaffold, Life profile/nutrition/reminder features, group ownership changes.
+Out of scope: independent login, Life profile/features, Life bot, frontend feature screens.
 
-Completion criteria: no request can select owner ID; raw user ID is not trusted; unauthenticated requests fail consistently; existing webhook/admin authentication remains intact.
+Completion criteria: browser never supplies trusted owner ID; invalid/stale initData fails safely; existing bot ingress remains separate.
 
-## Phase 2 — Life module and core personal persistence
+## Phase 1.5 — Minimal frontend foundation
 
-Objective: create Life module boundaries, personal profile/settings, notification destination model, and minimal typed application/repository patterns.
+Objective: obtain early Mini App/web UX feedback using real authenticated API bootstrap without feature-rich screens.
 
-Expected files/modules affected: `app/modules/life/__init__.py`, composition/bot skeleton, Life models/repositories/services/schemas, Life migration revision, possible module discovery/lifespan integration only through standard registration, API profile/settings/destination routes.
+Expected files/modules affected: new root `frontend/` scaffold, TypeScript/tooling/configuration, Telegram SDK adapter/bootstrap, router/layout shell, auth bootstrap/fallback pages, minimal root Compose/deployment updates only if separately approved.
 
-Migrations: `life_profiles`, optionally effective-dated `life_nutrition_goals`, `life_notification_destinations`, necessary indexes/FKs/checks.
+Migrations: none.
 
-Tests/verification: ownership isolation; timezone validation; destination ownership/default constraints; module factory/startup composition; migration upgrade/downgrade checks if authorized.
+Verification: mocked Telegram SDK/bootstrap, auth bootstrap/error/fallback, responsive shell manual review, authenticated API integration.
 
-Prerequisites: Phase 1 complete and canonical owner decision accepted.
+Prerequisites: Phase 1 complete; frontend origin/session/CORS decision finalized.
 
-Deliverable: authenticated person can create/read/update Life profile/goals/destinations through transport-independent services/API.
+Deliverable: responsive app shell with Today/Planner/Grocery/Progress/Settings navigation placeholders, Mini App auth bootstrap, and safe outside-Telegram fallback.
 
-Out of scope: reminders, meal/workout/grocery logic, frontend UI beyond any approved auth test client.
+Out of scope: Life domain forms, fake local feature state, browser login.
 
-Completion criteria: no Life resource references chat as owner; no canonical stable data is put in generic `bot_user_states`/metadata JSONB.
+Completion criteria: frontend authenticates only through backend and contains no canonical business logic.
 
-## Phase 3 — Planner and durable reminder executor
+## Phase 2 — Life profile, goals, and notification destinations
 
-Objective: implement constrained one-time/recurring definitions, occurrence state, database claims, executor lifecycle, and Telegram delivery adapter.
+Objective: implement the first personal Life vertical slice: profile/settings, effective nutrition goals, and explicitly activated private/group/supergroup notification destinations.
 
-Expected files/modules affected: Life Planner models/repositories/services/schemas, Life migration, `app/modules/life/bot.py`, minimal Telegram adapter, configuration/health additions as warranted, Planner API routes.
+Expected files/modules affected: `backend/app/modules/life/` module skeleton, profile/settings/destination models/repositories/services/schemas/API, standard module registration/composition, Alembic migration; frontend API client/types may receive non-feature bootstrap fields only.
 
-Migrations: `life_reminders`, `life_reminder_occurrences`, indexes/constraints/claim fields; do not modify Finance/Islamic scheduler tables to make them generic.
+Migrations: `life_profiles`, `life_nutrition_goals`, `life_notification_destinations` with owner, Life-bot, chat, activation/validation, and index/constraint design from `DATA_MODEL.md`.
 
-Tests/verification: recurrence next-run across timezone/DST cases; one-time/recurrent transitions; duplicate/concurrent claim behavior; lease recovery; retry/permanent failure; destination disabled behavior; inline action ownership/idempotency; controlled restart simulation.
+Verification: owner isolation; timezone/goal validation; destination remains inactive until explicit owner activation; group visibility/validity checks; no chat owner path.
 
-Prerequisites: Phase 2 complete; accepted missed policy and designated executor deployment mode.
+Prerequisites: Phase 1 complete and Life bot configuration/destination validation approach specified.
 
-Deliverable: an enabled reminder is durable across restart and can send a bounded/retry-aware Telegram notification; Planner API works without Telegram router simulation.
+Deliverable: typed user API/application services for Settings, goals, and destinations; no reminders yet.
 
-Out of scope: Celery/Redis/new broker, automatic grocery generation, complex recurrence, a dedicated worker deployment unless multi-replica deployment is already required.
+Out of scope: meal/workout/grocery/reminder tables, frontend rich settings screen if not needed for next slice.
 
-Completion criteria: executor holds no DB lock while sending; DB constraints/claims make accidental concurrent executor starts safe; only one intentional executor is configured for MVP deployment.
+Completion criteria: all canonical Life ownership references `telegram_users.id`; group destination is active only by explicit owner action and backend delivery validation.
 
-## Phase 4 — Life Telegram entry and notification UX
+## Phase 3 — Planner and reminder backend
 
-Objective: add the deliberately small Life bot interface.
+Objective: implement one-time/recurring reminder definitions, occurrence state, durable PostgreSQL claim/executor semantics, and Planner API.
 
-Expected files/modules affected: Life bot/router/formatting/Telegram callback code, Life module factory and possibly bot provisioning documentation.
+Expected files/modules affected: Life Planner models/repositories/services/schemas/API and executor composition under `backend/app/modules/life/`, configuration, health/logging additions only if warranted, Alembic migration.
 
-Migrations: none unless callback/action audit requirements identified in Phase 3.
+Migrations: `life_reminders`, `life_reminder_occurrences`, indexes/unique constraints/lease fields. Do not generalize/modify Finance or Islamic schemas.
 
-Tests/verification: `/start`, `/app`, optional `/today`, callback ownership, bot-user status behavior, group notification privacy behavior, outgoing message failure handling.
+Verification: constrained recurrence/timezone/DST next-run behavior, 60-minute configurable grace default, no recurring bulk catch-up, concurrent claims/lease recovery, retry/permanent failure, inactive destination rejection, API idempotency.
 
-Prerequisites: Phase 3 complete; configured Life bot instance can be provisioned through existing admin/CLI flow.
+Prerequisites: Phase 2 complete; one explicitly configured MVP executor deployment mode.
 
-Deliverable: Telegram is an entry/notification channel, not main CRUD interface.
+Deliverable: durable Planner user API/application services. Executor is safe to start but Telegram UX may remain minimal until Phase 4.
 
-Out of scope: command parser for meals/planner, natural-language intent parsing, complex chat flows.
+Out of scope: broker/Celery/Redis, complex recurrence, nutrition/fitness/grocery features.
 
-Completion criteria: Life personal actions require owner verification; group chat never becomes the source of owner identity.
+Completion criteria: occurrence claims are transactionally safe, executor sends outside locks, and no in-memory timer is canonical state.
 
-## Phase 5 — Nutrition, weight, and Fitness MVP backend/API
+## Phase 3.5 — Planner frontend
 
-Objective: implement structured food/template/log, goals, weight, workout schedule/completion services and API.
+Objective: make Planner a real vertical slice with structured reminder CRUD and destination selection.
 
-Expected files/modules affected: Life Nutrition/Fitness models/repositories/services/schemas, API routes, migrations; Today aggregation service may start here.
+Expected files/modules affected: `frontend/src/features/planner/`, settings/destination UI as needed, typed API hooks/forms/routes.
 
-Migrations: foods, meal templates/items, meal logs/items, weight logs, workout schedule/completion tables plus constraints/indexes in `DATA_MODEL.md` as scope demands.
+Migrations: none.
 
-Tests/verification: numeric/unit validation; owner isolation; immutable meal log nutrition snapshots; daily local-date totals; goal-effective-date selection; workout completion idempotency; bounded history pagination.
+Verification: recurrence form validation, timezone/next-run presentation, activation warning for group destinations, API error/idempotency behavior, responsive manual review.
 
-Prerequisites: Phases 1–3 complete.
+Prerequisites: Phase 3 API complete.
 
-Deliverable: API supports configured user foods/templates, meal/weight logs, calorie/protein summaries, workouts, and history.
+Deliverable: authenticated user creates/enables/disables/reschedules reminders through Mini App UI.
 
-Out of scope: external food API, AI/NLP logging, calorie auto-adjustment, advanced programming.
+Out of scope: Telegram command CRUD, NLP scheduling, rich Today/Nutrition screens.
 
-Completion criteria: Today/Progress calculations are server-side and deterministic; sample personal targets are not hardcoded.
+Completion criteria: all forms emit structured API payloads; frontend does not calculate canonical recurrence/ownership rules.
 
-## Phase 6 — Grocery MVP and Today/Progress read models
+## Phase 4 — Telegram Life entry and reminder notification UX
 
-Objective: add grocery entities and finish compact frontend API read models.
+Objective: add minimal Life runtime bot: `/start`, `/app`, optional simple `/today`, reminder delivery, and ownership-safe inline actions.
 
-Expected files/modules affected: Life Grocery models/repositories/services/schemas/API; Today/Progress aggregation services/routes; migrations.
+Expected files/modules affected: Life bot/router/formatting/callback adapter/factory under `backend/app/modules/life/`; bot provisioning documentation; no generic platform refactor unless required by evidence.
+
+Migrations: none unless an occurrence action audit field is genuinely required.
+
+Verification: command entry/app link, destination delivery, callback ownership in group, retry/failure behavior, bot-user status behavior.
+
+Prerequisites: Phases 2–3.5 complete and Life bot configured through existing configuration flow.
+
+Deliverable: Telegram is a notification/entry transport, never the principal feature UI.
+
+Out of scope: complex command parser, natural-language input, group ownership semantics.
+
+Completion criteria: a group callback cannot change another person’s data; personal action authorization always derives from Telegram actor/API session.
+
+## Phase 5 — Nutrition, weight, and Fitness backend
+
+Objective: create structured foods/templates/logs, weight history, workout schedules/completions, and Today/Progress-ready application/API services.
+
+Expected files/modules affected: Life Nutrition/Fitness models/repositories/services/schemas/API and migrations under backend.
+
+Migrations: foods, templates/items, meal logs/items, weight logs, workout schedules/completions with constraints/indexes in `DATA_MODEL.md`.
+
+Verification: numeric validation, owner isolation, meal snapshots, local-date totals, goal history, workout completion idempotency, bounded histories.
+
+Prerequisites: Phase 2 and API foundation complete.
+
+Deliverable: deterministic backend user API for Nutrition/weight/Fitness; no external food data/AI.
+
+Out of scope: automatic calorie adjustment, advanced workout programming, external nutrition API.
+
+Completion criteria: backend calculates calories/protein/adherence; user examples are configurations, not code defaults.
+
+## Phase 5.5 — Today, Nutrition, and Fitness frontend
+
+Objective: expose the completed Nutrition/Fitness slice in responsive Mini App screens.
+
+Expected files/modules affected: frontend Today/Nutrition/Fitness/Settings feature components, typed API hooks, charts/forms.
+
+Migrations: none.
+
+Verification: meal/weight/workout flows, Today quick actions, date/timezone display, error/loading states, mobile/desktop review.
+
+Prerequisites: Phase 5 API complete.
+
+Deliverable: Today shows server-calculated data and users manage foods/templates/logs/weight/workouts through structured forms.
+
+Out of scope: food recognition, AI generation, predictive insights.
+
+Completion criteria: UI does not duplicate totals or business rules.
+
+## Phase 6 — Grocery and Progress backend
+
+Objective: implement grocery lists/items/recurring items plus bounded Progress read models.
+
+Expected files/modules affected: Life Grocery/Progress services/repositories/schemas/API and migrations under backend.
 
 Migrations: grocery lists/items/recurring items and indexes.
 
-Tests/verification: list ownership; bought transition idempotency; quantity/price validation; estimated total; date-range/progress aggregation; query limits.
+Verification: ownership, bought idempotency, price/quantity validation, estimated totals, date range/query limits.
 
 Prerequisites: Phase 5 complete.
 
-Deliverable: complete backend MVP API for the five primary UI areas.
+Deliverable: typed Grocery/Progress API contracts.
 
-Out of scope: inventory depletion/prediction, auto ordering, social/shared grocery features.
+Out of scope: inventory depletion/prediction, auto ordering, social/shared list features.
 
-Completion criteria: every primary frontend screen has a typed backend contract and no frontend-only canonical calculation is required.
+Completion criteria: all five primary frontend sections have a backend contract.
 
-## Phase 7 — Frontend foundation and MVP screens
+## Phase 6.5 — Grocery and Progress frontend
 
-Objective: create responsive Mini App/web frontend and integrate approved APIs.
+Objective: finish primary screen coverage using the Phase 6 API.
 
-Expected files/modules affected: new `frontend/` only if repository layout Phase 0 approved; root/Compose/deployment files only in a separately scoped infrastructure change; frontend docs/state updates.
+Expected files/modules affected: frontend Grocery/Progress feature UI, API hooks, routes/components.
 
 Migrations: none.
 
-Tests/verification: Telegram SDK adapter mock tests, auth bootstrap/fallback, form validation, API error states, responsive manual review, Mini App manual launch, end-to-end flows if test infrastructure is approved.
+Verification: list editing/bought state, simple estimate display, date filters/charts/history, responsive review.
 
-Prerequisites: backend phases exposing required APIs; final frontend origin/session/CORS deployment decision; repository relocation completed if chosen.
+Prerequisites: Phase 6 complete.
 
-Deliverable: Today, Planner, Grocery, Progress, Settings responsive screens launched via Mini App and understandable outside Telegram.
+Deliverable: usable Grocery and Progress screens.
 
-Out of scope: non-Telegram login, native mobile app, AI functionality.
+Out of scope: advanced analytics/prediction.
 
-Completion criteria: no page needs a Telegram command parser; browser fallback is safe; API owns authorization/rules.
+Completion criteria: screens use server read models and typed API errors.
+
+## Phase 7 — Full integration and polish
+
+Objective: complete cross-slice UX, onboarding, documentation, accessibility, and manual end-to-end flows.
+
+Expected files/modules affected: scoped backend/frontend/docs/deployment files only as driven by integration findings.
+
+Migrations: only additive changes justified by verified gaps.
+
+Verification: end-to-end Mini App auth → Settings/destination → Planner → notification → inline action → Today/Progress; group visibility/authorization; restart durability.
+
+Prerequisites: phases 1–6.5 complete.
+
+Deliverable: compact MVP experience across web/Mini App/Telegram notification transports.
+
+Out of scope: deferred/non-goal features in `PRODUCT.md`.
+
+Completion criteria: no unresolved MVP blocker; docs and runbooks reflect actual architecture.
 
 ## Phase 8 — Hardening and deployment evolution
 
-Objective: operationalize reminder delivery, security, and optional dedicated worker extraction based on real deployment needs.
+Objective: operationalize sessions, reminder executor, monitoring, and optional dedicated worker extraction based on real deployment evidence.
 
-Expected files/modules affected: configuration, health/metrics/logging, Docker/Compose/deployment manifests, worker entrypoint if needed, tests/docs.
+Expected files/modules affected: backend config/health/logging/worker entrypoint, root Compose/deployment manifests, frontend deployment config, docs/tests as needed.
 
-Migrations: only additive operational/audit fields if evidence requires them.
+Migrations: only additive operational/audit fields if justified.
 
-Tests/verification: deploy with restart/lease recovery; multi-executor safety; overdue/reminder observability; secret handling; session security; migration rollback procedure.
+Verification: restart/lease recovery, multi-executor safety, overdue-job observability, secret/session security, migration procedures.
 
 Prerequisites: working MVP and real deployment/volume data.
 
-Deliverable: explicit single-executor or worker topology, documented monitoring/runbook.
+Deliverable: explicit executor topology and operational runbook.
 
-Out of scope: adding a broker/Redis/Celery without demonstrated need.
+Out of scope: broker/Redis/Celery without demonstrated need.
 
-Completion criteria: deployment does not accidentally run uncontrolled executors per web worker; operational failures are visible/actionable.
+Completion criteria: web replicas cannot accidentally create uncontrolled executor fleets; failures are visible/actionable.

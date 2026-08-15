@@ -4,22 +4,23 @@
 
 1. Read `life-docs/README.md`, `STATE.md`, `DECISIONS.md`, and `IMPLEMENTATION_PLAN.md` before touching production files.
 2. Read the phase-relevant design docs: `ARCHITECTURE.md`, `DATA_MODEL.md`, `API_PLAN.md`, `REMINDERS.md`, `FRONTEND_PLAN.md`, and `PRODUCT.md` as applicable.
-3. Run read-only `git status --short` and `git diff --stat`; inspect any existing diff before assuming it belongs to your task. Preserve unrelated user work.
-4. Use `STATE.md` to identify the current phase and confirm all prerequisites/completion criteria. Do not start a later phase early.
-5. Inspect the current source because documents may be stale; exact existing anchors include `app/core/lifespan.py`, `app/api/webhook.py`, `app/platform/users/`, `app/platform/updates/`, `app/modules/finance/`, and `app/modules/islamic/`.
+3. If the current phase is 0A/0B, read `RELOCATION_PLAN.md` before changing any root/backend paths.
+4. Run read-only `git status --short` and `git diff --stat`; inspect any existing diff before assuming it belongs to your task. Preserve unrelated user work.
+5. Use `STATE.md` to identify the current phase and confirm all prerequisites/completion criteria. Do not start a later phase early.
+6. Inspect the current source because documents may be stale. Phase 0A has relocated backend anchors under `backend/app/`; run backend-local Python/Alembic work from `backend/` and use its Makefile so the authoritative root `../.env` is explicitly exported.
 
 ## During implementation
 
 - Make only the changes authorized by the active phase and user request.
 - Maintain the modular monolith; do not introduce a service/broker/cache without a recorded decision and evidence.
-- Keep canonical Life ownership personal (`telegram_users.id` if DEC-002 is accepted); never infer owner from a chat ID or client-submitted ID.
+- Keep canonical Life ownership personal (`telegram_users.id`, DEC-002 accepted); never infer owner from a chat ID or client-submitted ID.
 - Never make a REST endpoint invoke/simulate a Telegram router. Both transports call application services.
 - Preserve `life-docs/` at repository root, outside both backend and frontend.
 - Preserve deterministic structured behavior: no AI/LLM/NLP additions.
 
 ## Migrations and verification
 
-- Before creating/changing a migration, inspect `alembic.ini`, `migrations/env.py`, latest revision, and the data-model section for the active phase.
+- Before creating/changing a migration, inspect `backend/alembic.ini`, `backend/migrations/env.py`, latest revision, and the data-model section for the active phase.
 - Confirm migration head/order with the developer-approved Alembic command only when the task scope authorizes it. Do not assume migration has been applied merely because a file exists.
 - This repository’s current `AGENTS.md` prohibits agents from running tests, linters, formatters, type checks, builds, and runtime validation unless a user explicitly changes that verification policy. Follow it; recommend relevant developer checks in handoff instead.
 - The planning inspection found no committed test files. If tests are introduced, record their commands/coverage in `STATE.md` and phase completion criteria.

@@ -39,7 +39,7 @@ manual checks without executing them.
 
 ## Graphify Maintenance
 
-When source code under `app/` changes, remind the developer once in the final
+When source code under `backend/app/` changes, remind the developer once in the final
 handoff to refresh the knowledge graph. This applies when the agent changes the
 source in Implementor Mode or when the user states that they changed source code
 during the conversation. Use this exact reminder:
@@ -56,34 +56,36 @@ validation step.
 
 ## Project Structure & Module Organization
 
-Application code lives in `app/`. HTTP endpoints are under `app/api/`, shared
-infrastructure is in `app/core/`, and reusable response, exception, and type
-helpers belong in `app/shared/`. Platform-owned bot, update, and user behavior is
-grouped in `app/platform/`.
+Application code lives in `backend/app/`. HTTP endpoints are under
+`backend/app/api/`, shared infrastructure is in `backend/app/core/`, and reusable
+response, exception, and type helpers belong in `backend/app/shared/`.
+Platform-owned bot, update, and user behavior is grouped in
+`backend/app/platform/`.
 
-Add independently developed bots beneath `app/modules/<bot_name>/`. Follow
-`app/modules/sample_bot/` for the expected router, handlers, services,
+Add independently developed bots beneath `backend/app/modules/<bot_name>/`. Follow
+`backend/app/modules/sample_bot/` for the expected router, handlers, services,
 repositories, schemas, and models layout. Keep handlers thin: business rules
 belong in services and persistence logic belongs in repositories.
 
-Alembic configuration is in `alembic.ini`, with migrations in
-`migrations/versions/`. Container configuration lives in `Dockerfile` and
-`docker-compose.yml`.
+Alembic configuration is in `backend/alembic.ini`, with migrations in
+`backend/migrations/versions/`. Backend container configuration lives in
+`backend/Dockerfile`; workspace orchestration lives in root `docker-compose.yml`.
 
 ## Developer Commands
 
 These commands are references for the developer; agents must not execute them
 unless a future user request explicitly changes the verification policy.
 
-- `make install`: install locked Python 3.13 dependencies with `uv`.
-- `make run`: run Uvicorn locally with auto-reload.
-- `make migrate`: upgrade the configured database to the latest revision.
-- `make revision MESSAGE="add bot settings"`: generate an Alembic migration.
-- `make docker-dev`: start PostgreSQL, the development app, and Cloudflare
+- `make -C backend install`: install locked Python 3.13 dependencies with `uv`.
+- `make -C backend run`: run Uvicorn locally with auto-reload; the backend
+  Makefile explicitly loads root `.env`.
+- `make -C backend migrate`: upgrade the configured database to the latest revision.
+- `make -C backend revision MESSAGE="add bot settings"`: generate an Alembic migration.
+- `make -C backend docker-dev`: start PostgreSQL, the development app, and Cloudflare
   Tunnel using the `dev` Compose profile.
-- `make docker-up`: build and start the production-profile containers.
-- `make docker-down`: stop the Compose project.
-- `make docker-dev-logs`: follow development app and tunnel logs.
+- `make -C backend docker-up`: build and start the production-profile containers.
+- `make -C backend docker-down`: stop the Compose project.
+- `make -C backend docker-dev-logs`: follow development app and tunnel logs.
 
 ## Coding Style & Naming Conventions
 
@@ -106,7 +108,7 @@ changes. The developer is responsible for recording manual verification.
 
 ## Security & Configuration
 
-Copy `.env.example` to `.env`; never commit `.env`, Telegram credentials,
+Copy root `.env.example` to root `.env`; never commit `.env`, Telegram credentials,
 Fernet keys, or Cloudflare tunnel tokens. Keep production secrets in a secret
 manager. When running the tunnel in Compose, configure its origin as
 `http://app-dev:8000`, not localhost.

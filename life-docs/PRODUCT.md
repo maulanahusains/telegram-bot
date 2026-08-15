@@ -65,11 +65,11 @@ The MVP gives one person a compact place to plan routines/reminders, record meal
 
 ## Telegram and group behavior
 
-**FACT:** current `telegram_users` gives one global identity per Telegram user, `bot_users` is bot membership, and `telegram_chats` stores chat identity (`app/platform/users/models.py`). Islamic uses `(bot_id, chat_id)` scopes because group data is intentional.
+**FACT:** current `telegram_users` gives one global identity per Telegram user, `bot_users` is bot membership, and `telegram_chats` stores chat identity (`backend/app/platform/users/models.py`). Islamic uses `(bot_id, chat_id)` scopes because group data is intentional.
 
 **CONFIRMED REQUIREMENT:** Life group/supergroup use is an optional notification destination and entry point. Personal meals, goals, weight, routines, and grocery data retain personal ownership. Opening the Mini App from a group should authenticate the launching Telegram user, not make the group owner. A selected group destination is simply a record used for outbound notifications.
 
-**OPEN QUESTION:** Should MVP allow groups as selectable destinations, or initially only private chat? Group selection requires bot membership and the user must understand that reminders posted there are visible to group members. The conservative MVP is private chat default plus an explicit later group-destination setup flow.
+**CONFIRMED REQUIREMENT:** MVP supports private-chat, group, and supergroup notification destinations. A group/supergroup is eligible only after the authenticated owner explicitly selects/enables it. Bot installation, a webhook update, or a Mini App launch from the group must not silently activate it. Backend validates the destination is known and that the configured Life bot can send there; destination visibility is made explicit in UI.
 
 ## Major MVP UX flows
 
@@ -110,9 +110,8 @@ The MVP gives one person a compact place to plan routines/reminders, record meal
 
 ## Open product questions
 
-1. Is a private Telegram chat sufficient as MVP notification destination, or must a group/supergroup be selectable immediately?
-2. What notification types need inline actions: routine done, meal logged, workout done, reminder dismiss, or all of these?
-3. What grace period makes a late one-time reminder useful rather than stale?
-4. Is a grocery list always weekly, or should users select any date range at MVP?
-5. Are meal logs one aggregate meal/template entry, or must individual food servings be editable from the first release? This plan supports editable entries because totals depend on them.
-6. Is one timezone per Life profile sufficient for MVP? Proposed answer: yes; per-reminder timezone overrides remain optional.
+1. What notification types need inline actions: routine done, meal logged, workout done, reminder dismiss, or all of these?
+2. Confirm the configured one-time late-delivery grace default. Proposal: 60 minutes.
+3. Is a grocery list always weekly, or should users select any date range at MVP?
+4. Are meal logs one aggregate meal/template entry, or must individual food servings be editable from the first release? This plan supports editable entries because totals depend on them.
+5. Is one timezone per Life profile sufficient for MVP? Proposed answer: yes; per-reminder timezone overrides remain optional.

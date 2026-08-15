@@ -25,17 +25,18 @@ Then inspect `git status --short`, verify the current implementation phase, and 
 - [DECISIONS.md](DECISIONS.md) — architecture decision log.
 - [STATE.md](STATE.md) — current project state and next action; update this during implementation.
 - [HANDOFF.md](HANDOFF.md) — how a new agent resumes safely.
+- [RELOCATION_PLAN.md](RELOCATION_PLAN.md) — exact Phase 0A backend-only relocation runbook.
 
 ## Planning Snapshot
 
-**Recommended architecture:** retain the current PostgreSQL-backed FastAPI modular monolith. Add one `app/modules/life/` module with internal Planner, Nutrition, Fitness, and Grocery domains. Expose transport-independent Life application services through both a small Life Telegram adapter and a new authenticated user API; do not route web requests through Telegram command routers.
+**Recommended architecture:** retain the current PostgreSQL-backed FastAPI modular monolith. Add one `backend/app/modules/life/` module with internal Planner, Nutrition, Fitness, and Grocery domains. Expose transport-independent Life application services through both a small Life Telegram adapter and a new authenticated user API; do not route web requests through Telegram command routers.
 
-**Recommended canonical Life owner:** `telegram_users.id`, the existing global internal Telegram identity. `bot_users` remains appropriate for Life-bot membership, bot-specific state/status, and Telegram permissions; chat IDs are notification destinations only. This is a **proposed** decision pending confirmation that Life must share one personal account across all current/future product surfaces.
+**Confirmed canonical Life owner:** `telegram_users.id`, the existing global internal Telegram identity. `bot_users` remains appropriate for Life-bot membership, bot-specific state/status, and Telegram permissions; chat IDs are explicitly activated notification destinations only. Private chats, groups, and supergroups are MVP destination types; a bot being added to a group never selects or owns it.
 
-**Reminder strategy:** PostgreSQL-backed reminder definitions plus durable delivery rows/claims and a database-locking executor. For the MVP it may run as one explicitly configured FastAPI-owned executor under the existing deployment assumption. Design the schema/claim interface so the same executor can move to a dedicated worker process later without changing reminder semantics.
+**Confirmed reminder strategy:** PostgreSQL-backed reminder definitions plus durable occurrence/delivery claims and a database-locking executor. MVP runs one explicitly configured executor alongside the FastAPI deployment, while its composition remains independent enough to move to a dedicated process later. One-time reminders use one configurable late-delivery grace period (planned default: 60 minutes); recurring reminders do not bulk catch up.
 
 **Frontend strategy:** create a separate responsive TypeScript frontend only after backend identity/API foundations are ready. Its primary MVP entry is Telegram Mini App `initData` verified by the backend; it must also render a safe “open in Telegram” fallback outside Telegram. Independent browser login is deferred.
 
-**Next implementation phase:** Phase 0 in `IMPLEMENTATION_PLAN.md` — confirm the open product decisions, establish a baseline test strategy, and decide whether repository relocation to `backend/` occurs before any Life imports/migrations. Do not create Life tables or feature code before that phase completes.
+**Next implementation phase:** Phase 0B in `RELOCATION_PLAN.md` and `IMPLEMENTATION_PLAN.md` — perform the baseline verification/documentation closure that was intentionally deferred by repository policy after Phase 0A relocated the backend to `backend/`. Do not begin Life tables, feature code, or frontend until Phase 0B is complete.
 
-**Unresolved decisions requiring user confirmation:** whether canonical Life data must be shared with Finance/other bots under one product account; the exact MVP missed-reminder policy; whether reminders need group destinations in MVP; and whether to relocate the backend before frontend work. See `DECISIONS.md` and `PRODUCT.md`.
+**Remaining implementation-level questions:** exact grace-window value (60 minutes is planned), group/private destination activation UX, and same-origin cookie versus separate-origin token session deployment. These do not reopen the accepted ownership/reminder/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.
