@@ -20,7 +20,7 @@ Then inspect `git status --short`, verify the current implementation phase, and 
 - [DATA_MODEL.md](DATA_MODEL.md) — proposed Life entities, ownership, constraints, and relationships; not migrations.
 - [API_PLAN.md](API_PLAN.md) — planned authenticated Mini App/frontend API boundary.
 - [REMINDERS.md](REMINDERS.md) — durable reminder model, executor, delivery, retry, and scale path.
-- [FRONTEND_PLAN.md](FRONTEND_PLAN.md) — frontend/Mini App approach without a scaffold.
+- [FRONTEND_PLAN.md](FRONTEND_PLAN.md) — implemented frontend/Mini App foundation and next UI boundaries.
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — executable phase-by-phase roadmap.
 - [DECISIONS.md](DECISIONS.md) — architecture decision log.
 - [STATE.md](STATE.md) — current project state and next action; update this during implementation.
@@ -35,8 +35,8 @@ Then inspect `git status --short`, verify the current implementation phase, and 
 
 **Confirmed reminder strategy:** PostgreSQL-backed reminder definitions plus durable occurrence/delivery claims and a database-locking executor. MVP runs one explicitly configured executor alongside the FastAPI deployment, while its composition remains independent enough to move to a dedicated process later. One-time reminders use one configurable late-delivery grace period (planned default: 60 minutes); recurring reminders do not bulk catch up.
 
-**Frontend strategy:** create a separate responsive TypeScript frontend only after backend identity/API foundations are ready. Its primary MVP entry is Telegram Mini App `initData` verified by the backend; it must also render a safe “open in Telegram” fallback outside Telegram. Independent browser login is deferred.
+**Frontend strategy:** Phase 1.5 created one responsive React/TypeScript/Vite SPA at root `frontend/`. Its primary routes are `/tg/:launchingBot` for multi-bot Telegram Mini App launches and `/app` for valid-session reuse. It first checks the HttpOnly platform session, then submits raw `initData` only to backend verification. Production uses an accepted same-origin frontend/API topology; normal browsers render a safe “open in Telegram” fallback. Independent browser login is deferred.
 
-**Next implementation phase:** Phase 1.5 in `IMPLEMENTATION_PLAN.md` — minimal frontend foundation and real Mini App auth bootstrap. Phase 1 implemented the reusable platform auth API and server session foundation; do not begin Life feature tables or rich feature screens in Phase 1.5.
+**Next implementation phase:** Phase 2 in `IMPLEMENTATION_PLAN.md` — Life profile, goals, and explicitly activated Telegram notification destinations. Phase 1.5 implemented only the frontend foundation and real platform-auth bootstrap; it did not create Life tables or feature screens.
 
-**Remaining implementation-level questions:** exact grace-window value (60 minutes is planned), group/private destination activation UX, and final same-origin reverse-proxy/frontend deployment details. These do not reopen the accepted ownership/reminder/session/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.
+**Remaining implementation-level questions:** exact grace-window value (60 minutes is planned) and group/private destination activation UX. These do not reopen the accepted ownership/reminder/session/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.

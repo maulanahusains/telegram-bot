@@ -94,7 +94,9 @@ sequenceDiagram
 
 **IMPLEMENTED IN PHASE 1:** `backend/app/platform/auth/` owns the reusable auth service, session repository/model, schemas, and authenticated-user dependency. `POST /api/v1/auth/telegram` validates raw signed `initData` against an enabled launching runtime selected by configured bot name. It parses the query string once, rejects duplicates/malformed data, calculates Telegram's `WebAppData` HMAC using the runtime's decrypted bot token, compares hashes in constant time, checks configurable `auth_date` freshness/skew, and only then parses the Telegram user. It never logs or stores raw initData or a bot token.
 
-**IMPLEMENTED IN PHASE 1:** a PostgreSQL `application_sessions` table stores a SHA-256 hash of an opaque random session token, the global user, launching bot, expiry, last-seen, and revocation timestamps. The raw token is issued only in a configurable Secure/HttpOnly/SameSite cookie scoped to `/api/v1`; `GET /api/v1/me` and future user APIs derive internal identity through the platform dependency. New login rotates active sessions for that user+launching-bot pair; logout revokes the stored row. No raw token, raw initData, or bot credential is persisted. Same-origin deployment is assumed until Phase 1.5 finalizes frontend deployment; CORS remains absent rather than insecurely permissive.
+**IMPLEMENTED IN PHASE 1:** a PostgreSQL `application_sessions` table stores a SHA-256 hash of an opaque random session token, the global user, launching bot, expiry, last-seen, and revocation timestamps. The raw token is issued only in a configurable Secure/HttpOnly/SameSite cookie scoped to `/api/v1`; `GET /api/v1/me` and future user APIs derive internal identity through the platform dependency. New login rotates active sessions for that user+launching-bot pair; logout revokes the stored row. No raw token, raw initData, or bot credential is persisted.
+
+**IMPLEMENTED IN PHASE 1.5 / DEC-015 and DEC-016:** the React frontend’s `/tg/:launchingBot` route first checks `/api/v1/me`; only on a 401 does it send that public bot-name hint and transient raw `Telegram.WebApp.initData` to platform auth. The frontend uses only relative `/api/v1/*` paths and `credentials: "same-origin"`. Root Compose provides production Nginx routing and a Vite development proxy; FastAPI retains no CORS middleware.
 
 Opening from different chats changes launch context, not `owner_user_id`. The backend may record/validate an optional launch chat only to preselect a notification destination after authorization. When opened outside Telegram, show an unauthenticated “Open in Telegram” page; independent login is deferred.
 
@@ -117,14 +119,14 @@ For MVP, a FastAPI-owned executor can reuse the explicit lifecycle pattern in `b
 
 ## Eventual repository layout
 
-**FACT:** Phase 0A relocated backend-owned files to `backend/`: `backend/app/`, `backend/migrations/`, `backend/Dockerfile`, `backend/alembic.ini`, and `backend/Makefile`. Root `docker-compose.yml` remains workspace orchestration and uses `./backend` as the backend build context. No frontend or CI configuration exists.
+**FACT:** Phase 0A relocated backend-owned files to `backend/`: `backend/app/`, `backend/migrations/`, `backend/Dockerfile`, `backend/alembic.ini`, and `backend/Makefile`. Root `docker-compose.yml` remains workspace orchestration and uses `./backend` as the backend build context. Phase 1.5 added `frontend/` and optional production/development Compose services; no CI configuration exists.
 
 **ACCEPTED:** execute the dedicated backend-only move first, in Phase 0A, before Phase 1 authentication or any Life migration. See `RELOCATION_PLAN.md`; no Life feature code belongs in the move.
 
 ```text
 project-root/
 ├── backend/                    # current backend root contents after deliberate move
-├── frontend/                   # later, independently buildable responsive application
+├── frontend/                   # current independently buildable responsive application
 ├── life-docs/                  # permanent, stays root-level
 ├── docker-compose.yml          # optional root orchestration after deliberate decision
 └── README.md                   # root-level entry documentation

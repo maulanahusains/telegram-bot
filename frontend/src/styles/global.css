@@ -1,0 +1,120 @@
+:root {
+  color: #18222d;
+  background: #f4f6f8;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --tg-bg: #f4f6f8;
+  --tg-surface: #ffffff;
+  --tg-text: #18222d;
+  --tg-muted: #697584;
+  --tg-link: #2776c7;
+  --tg-button: #2776c7;
+  --tg-button-text: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+}
+
+button { font: inherit; }
+
+.state-page,
+.app-page {
+  width: min(100%, 720px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+}
+
+.state-page {
+  display: grid;
+  place-items: center;
+}
+
+.state-card,
+.app-card {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--tg-text) 12%, transparent);
+  border-radius: 18px;
+  background: var(--tg-surface);
+  box-shadow: 0 10px 28px rgb(20 31 45 / 8%);
+}
+
+.state-card { max-width: 520px; padding: 28px; }
+.app-card { padding: 24px; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--tg-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1, h2 { margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(1.6rem, 6vw, 2.25rem); }
+h2 { font-size: 1.2rem; }
+
+.state-copy,
+.app-card > p {
+  margin-top: 16px;
+  color: var(--tg-muted);
+  line-height: 1.55;
+}
+
+.button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.button-secondary {
+  background: color-mix(in srgb, var(--tg-button) 14%, var(--tg-surface));
+  color: var(--tg-link);
+}
+
+.button:disabled { cursor: wait; opacity: 0.65; }
+
+dl { margin: 20px 0; }
+dl div { padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, var(--tg-text) 10%, transparent); }
+dl div:last-child { border-bottom: 0; }
+dt { color: var(--tg-muted); font-size: 0.9rem; }
+dd { margin: 4px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #18222d;
+    color: #f3f5f7;
+    --tg-bg: #18222d;
+    --tg-surface: #202b36;
+    --tg-text: #f3f5f7;
+    --tg-muted: #acb8c6;
+    --tg-link: #73b8ff;
+    --tg-button: #73b8ff;
+    --tg-button-text: #18222d;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header { align-items: flex-start; flex-direction: column; }
+  .button { width: 100%; }
+}

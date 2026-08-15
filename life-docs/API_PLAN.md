@@ -100,4 +100,6 @@ Use existing error shape and request ID. Add typed error codes such as `authenti
 
 ## CORS/session deployment note
 
-There is no CORS middleware and Phase 1 intentionally does not add one. The implemented opaque server session is delivered with configurable `Secure`, `HttpOnly`, `SameSite` cookie attributes and is scoped to `/api/v1`; defaults are Secure + Lax. Prefer same-origin reverse-proxy deployment in Phase 1.5. A separate frontend origin requires an explicit credentialed origin allowlist and CSRF decision before enabling it; never use wildcard CORS with cookies.
+**IMPLEMENTED IN PHASE 1.5 / DEC-015:** frontend code calls relative `/api/v1/*` paths using same-origin cookie credentials. The production Compose `frontend` Nginx container serves the SPA and proxies `/api`, `/webhook`, `/health`, and `/admin` to the backend service. Vite’s local-development proxy is a development-server-only bridge and does not alter backend CORS.
+
+There is still no CORS middleware. The opaque server session is delivered with configurable `Secure`, `HttpOnly`, `SameSite` cookie attributes and is scoped to `/api/v1`; defaults are Secure + Lax. A future separate frontend origin requires an explicit credentialed origin allowlist and CSRF decision before enabling it; never use wildcard CORS with cookies.

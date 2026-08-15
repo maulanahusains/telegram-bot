@@ -166,4 +166,30 @@ Context: CONFIRMED REQUIREMENT — auth must be reusable by Life, Finance, Islam
 
 Alternatives considered: Life-local auth; unsigned browser-supplied Telegram ID; client-held bearer/JWT tokens; Redis sessions; password/OAuth login; a database session without a cookie.
 
-Consequences: the authenticated application owner is always `telegram_users.id`, never a request-selected ID or `bot_users.id`. Bot membership is refreshed/created only for the verified launching bot and remains a transport permission check. Cookies assume same-site deployment; CORS is intentionally not enabled until a frontend origin is known. Existing sessions become unusable if their launching bot is disabled or the relevant bot membership is no longer active.
+Consequences: the authenticated application owner is always `telegram_users.id`, never a request-selected ID or `bot_users.id`. Bot membership is refreshed/created only for the verified launching bot and remains a transport permission check. Cookies assume same-site deployment; DEC-015 later confirms the same-origin frontend topology, so FastAPI still needs no CORS exception. Existing sessions become unusable if their launching bot is disabled or the relevant bot membership is no longer active.
+
+## DEC-015 — Same-origin frontend/API deployment for the MVP
+
+Status: Accepted
+Date: 2026-08-15
+
+Decision: The production frontend and FastAPI user API share one public origin. The frontend serves the SPA and routes `/api/*` to FastAPI; the browser uses relative API paths only. The root Compose production profile demonstrates this through the `frontend` Nginx service proxying API, webhook, health, and admin paths to `app`.
+
+Context: CONFIRMED REQUIREMENT — Phase 1 uses Secure, HttpOnly, SameSite=Lax session cookies and must not weaken CORS/cookie policy for local convenience. FACT — the Phase 1 API has no CORS middleware. A same-origin route keeps cookie delivery and the Mini App API boundary simple.
+
+Alternatives considered: separate frontend/backend origins with credentialed CORS; browser-held bearer tokens; enabling wildcard CORS.
+
+Consequences: frontend code calls relative `/api/v1/*` paths with same-origin credentials. Vite proxies `/api` only in local development; the backend retains no CORS exception. A future separate-origin deployment requires a separate accepted CORS/CSRF decision before implementation.
+
+## DEC-016 — Public multi-bot Mini App launch route
+
+Status: Accepted
+Date: 2026-08-15
+
+Decision: Use `/tg/:launchingBot` as the public frontend Mini App launch route. The route parameter follows the existing configured bot-name grammar and is sent with raw `Telegram.WebApp.initData` to platform auth only after an existing session check fails. It is a routing/authentication lookup hint, never user identity or security proof.
+
+Context: CONFIRMED REQUIREMENT — one frontend may be launched by Life, Finance, or Islamic/Muslimify bots. FACT — Phase 1 resolves the configured runtime by `launching_bot_name` and binds HMAC verification to that runtime’s encrypted credential.
+
+Alternatives considered: hardcoded Life route; frontend-selected bot token; a no-context `/app` login route; a separate frontend per bot.
+
+Consequences: `/tg/life`, `/tg/finance`, and `/tg/islamic` can share the application shell when configured. `/app` remains useful only for an already-valid cookie session; outside Telegram or without a launch context it shows a safe fallback.

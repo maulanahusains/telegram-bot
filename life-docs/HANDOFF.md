@@ -19,6 +19,8 @@
 - Preserve deterministic structured behavior: no AI/LLM/NLP additions.
 - Phase 1 platform auth belongs in `backend/app/platform/auth/`, never a product module. Use its authenticated-user dependency for user-facing APIs; never accept an owner ID as authorization proof.
 - The Phase 1 session is an opaque HttpOnly cookie backed by `application_sessions`. Do not expose or log raw initData, session tokens, or bot credentials; use the configured launching runtime to verify Mini App data.
+- Phase 1.5 frontend is at root `frontend/`. Its only trusted login flow is session-first `GET /api/v1/me`, then `POST /api/v1/auth/telegram` from `/tg/:launchingBot` with transient `Telegram.WebApp.initData`. Do not store initData or session data in browser storage, and do not add Life screens before their API/domain phase.
+- Keep frontend API calls relative and same-origin. `frontend-dev` uses the Vite proxy only for local development; `frontend` uses Nginx to proxy public backend paths in the production Compose profile. Do not add backend wildcard CORS or a frontend token store.
 
 ## Migrations and verification
 

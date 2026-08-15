@@ -66,19 +66,19 @@ Completion criteria: browser never supplies trusted owner ID; invalid/stale init
 
 Objective: obtain early Mini App/web UX feedback using real authenticated API bootstrap without feature-rich screens.
 
-Expected files/modules affected: new root `frontend/` scaffold, TypeScript/tooling/configuration, Telegram SDK adapter/bootstrap, router/layout shell, auth bootstrap/fallback pages, minimal root Compose/deployment updates only if separately approved.
+Implemented files/modules: root `frontend/` Vite/React/TypeScript scaffold, React Router/TanStack Query provider, official-script-backed Telegram adapter, session-first auth bootstrap, `/tg/:launchingBot` and `/app` routes, authenticated shell/logout/fallback states, Dockerfile/Nginx configuration, frontend Compose dev/prod services, and root/frontend documentation.
 
 Migrations: none.
 
-Verification: mocked Telegram SDK/bootstrap, auth bootstrap/error/fallback, responsive shell manual review, authenticated API integration.
+Verification: mocked Telegram SDK/bootstrap, auth bootstrap/error/fallback, responsive shell manual review, authenticated API integration. Per `AGENTS.md`, implementation agents do not run these automated/build/runtime checks; only static diff/path inspection is performed here.
 
-Prerequisites: Phase 1 complete; frontend origin/session/CORS decision finalized.
+Prerequisites: Phase 1 complete; frontend origin/session/CORS decision finalized. **Satisfied:** DEC-015 accepts same-origin deployment and DEC-016 records multi-bot launch URLs.
 
-Deliverable: responsive app shell with Today/Planner/Grocery/Progress/Settings navigation placeholders, Mini App auth bootstrap, and safe outside-Telegram fallback.
+Deliverable: responsive authenticated shell with Mini App auth bootstrap, logout, and safe outside-Telegram fallback. Product navigation/screens are intentionally deferred until their backend slices exist.
 
 Out of scope: Life domain forms, fake local feature state, browser login.
 
-Completion criteria: frontend authenticates only through backend and contains no canonical business logic.
+Completion criteria: frontend authenticates only through backend and contains no canonical business logic. **Implemented, pending developer-run build/runtime/manual verification under repository policy.**
 
 ## Phase 2 — Life profile, goals, and notification destinations
 

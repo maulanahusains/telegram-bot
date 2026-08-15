@@ -2,13 +2,13 @@
 
 ## Recommendation
 
-**PROPOSAL:** use a separate TypeScript React frontend, most likely Vite + React + React Router, when frontend implementation starts. The current repository has no JavaScript tooling, frontend application, or SSR requirement. A Vite SPA is a small, conventional fit for a Telegram Mini App and normal responsive web UI; do not add Next.js/SSR unless public SEO/server rendering later creates a real need.
+**IMPLEMENTED IN PHASE 1.5:** `frontend/` is a separate TypeScript React Vite SPA using React Router and TanStack Query. It is a small, conventional fit for a Telegram Mini App and normal responsive web UI; do not add Next.js/SSR unless public SEO/server rendering later creates a real need.
 
 Use a small data-fetching layer such as TanStack Query for server state, native React state/context for local UI/session bootstrap, and form validation with a typed schema library selected during implementation. Do not introduce Redux or a complex global state stack for this MVP.
 
 ## Location and deployment
 
-`frontend/` is not created in this task. Phase 0A relocates the backend first; then `frontend/` is created in Phase 1.5 as a root sibling of `backend/` and permanent `life-docs/`:
+`frontend/` was created in Phase 1.5 as a root sibling of `backend/` and permanent `life-docs/`:
 
 ```text
 project-root/
@@ -17,11 +17,11 @@ project-root/
 └── life-docs/
 ```
 
-Keep frontend independently buildable/deployable. Prefer a same-site reverse-proxy deployment (e.g., `app.example` serves frontend and proxies `/api` to backend) for Mini App cookie sessions and simple CORS. A separate frontend origin is possible but forces deliberate credentialed CORS/CSRF/token handling before implementation.
+**ACCEPTED / DEC-015:** keep frontend independently buildable/deployable, but deploy it same-origin with FastAPI for MVP: `app.example` serves the SPA and proxies `/api` to backend. The production Compose `frontend` service demonstrates this with Nginx; `frontend-dev` runs Vite and proxies `/api` to `app-dev`. A separate frontend origin remains possible only after a deliberate credentialed CORS/CSRF decision.
 
 ## Telegram SDK boundary
 
-Wrap Telegram WebApp access behind a small frontend adapter, for example `src/platform/telegram.ts`:
+`frontend/src/app/telegram/webapp.ts` wraps Telegram WebApp access:
 
 - Detect whether `window.Telegram?.WebApp` is available.
 - Read raw `initData`; send only to backend auth endpoint over HTTPS.
@@ -29,7 +29,7 @@ Wrap Telegram WebApp access behind a small frontend adapter, for example `src/pl
 - Keep button/navigation integration and haptic calls isolated from pages/components.
 - Do not trust client-reported Telegram user/chat identity; backend verification is authoritative.
 
-The adapter returns a typed launch context such as `{isTelegram, initData?, themeParams?}`. Pages work from API data and remain responsive outside Telegram.
+The adapter returns a typed transient launch context with `isTelegram`, `initData`, platform/version, and color scheme. It calls `ready()` and `expand()` once at bootstrap and applies only a small set of Telegram theme variables. Pages work from API data and remain responsive outside Telegram.
 
 ## Browser fallback
 
@@ -40,36 +40,34 @@ The adapter returns a typed launch context such as `{isTelegram, initData?, them
 - Do not fabricate a demo user or accept user IDs in query parameters.
 - Keep routing/components normal enough that later browser auth can reuse them.
 
-## Suggested frontend structure
+## Implemented frontend structure
 
 ```text
 frontend/
 ├── src/
-│   ├── app/                 # routing, providers, API/session bootstrap
-│   ├── api/                 # typed HTTP client and endpoint hooks
-│   ├── platform/            # Telegram WebApp adapter only
-│   ├── features/
-│   │   ├── today/
-│   │   ├── planner/
-│   │   ├── nutrition/
-│   │   ├── fitness/
-│   │   ├── grocery/
-│   │   └── settings/
-│   ├── components/          # reusable presentation components
-│   ├── routes/              # page composition
+│   ├── app/
+│   │   ├── api/             # typed relative HTTP client and auth calls
+│   │   ├── auth/            # session-first Mini App bootstrap
+│   │   ├── providers/       # TanStack Query provider
+│   │   ├── router/          # /app and /tg/:launchingBot
+│   │   └── telegram/        # one WebApp browser adapter
+│   ├── modules/life/        # temporary authenticated Life-first shell only
+│   ├── shared/components/   # small reusable state page
 │   └── styles/
 ├── public/
 ├── package.json
 └── README.md
 ```
 
-Feature folders own UI, query hooks, and form models, but canonical validation/calculation rules remain backend-side.
+Only boundaries needed by this thin slice were created. Future product folders own UI/query hooks/form models, but canonical validation/calculation rules remain backend-side.
 
 ## Routes and MVP pages
 
 | Route | Page | Primary behavior |
 | --- | --- | --- |
-| `/` | auth/bootstrap | verify Mini App session; redirect to Today or fallback |
+| `/` | redirect | routes to `/app` |
+| `/tg/:launchingBot` | auth/bootstrap | session-first Mini App auth for a configured bot name |
+| `/app` | auth/bootstrap | use an existing cookie session or show safe fallback |
 | `/today` | Today | overview plus quick complete/log actions |
 | `/planner` | Planner | reminder/routine CRUD, schedule/destination forms |
 | `/grocery` | Grocery | lists, items, bought toggle, estimated total |
@@ -77,7 +75,7 @@ Feature folders own UI, query hooks, and form models, but canonical validation/c
 | `/settings` | Settings | profile/timezone/goals/destinations/preferences |
 | `/foods`, `/meal-templates`, `/meal-logs` | nested or modal routes | structured nutrition management |
 
-Use bottom navigation or compact tab navigation for the five requested primary destinations on mobile, with accessible desktop layout at larger widths. Do not make Telegram viewport dimensions a required layout assumption.
+The implemented authenticated shell only shows display name, launching bot/module, session expiry, and logout. Today/Planner/Grocery/Progress/Settings navigation is deferred with their Life backend slices. Do not make Telegram viewport dimensions a required layout assumption.
 
 ## MVP interaction details
 
@@ -90,8 +88,8 @@ Use bottom navigation or compact tab navigation for the five requested primary d
 
 ## Session/data fetching
 
-On startup, frontend detects Telegram, sends `initData` with the launching bot name exactly to `POST /api/v1/auth/telegram`, then relies on the Phase 1 HTTP-only cookie. It fetches `GET /api/v1/me` before feature routes. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens, session tokens, or raw initData in local storage beyond the immediate exchange.
+On startup, the frontend first fetches `GET /api/v1/me`. If that session is unauthenticated and the `/tg/:launchingBot` route has a valid configured-name-shaped hint plus Telegram raw `initData`, it sends exactly those two fields to `POST /api/v1/auth/telegram`, then invalidates/refetches `/me`. It relies on the Phase 1 HTTP-only cookie afterwards. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens, session tokens, or raw initData in browser storage beyond the immediate exchange.
 
 ## Testing plan when implementation begins
 
-No frontend exists and repository inspection found no test suite. Phase 0 must establish test tooling expectations. At minimum, future implementation should include component/form tests for structured validation and integration tests for auth bootstrap/API error states; test Telegram adapter behavior with mocked `window.Telegram` rather than requiring Telegram in CI.
+The repository has no frontend test toolchain yet. Per `AGENTS.md`, this phase does not run automated tests/builds. A future authorized test setup should cover the WebApp adapter with mocked `window.Telegram`, session-first bootstrap, auth error/fallback states, launch-route extraction, and logout query clearing.
