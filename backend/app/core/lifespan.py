@@ -93,6 +93,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                     config=runtime_config,
                     bot=bot,
                     telegram=telegram,
+                    token=config.token,
                     secret_token=config.secret_token,
                 )
             except Exception as error:
@@ -100,6 +101,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                     config=runtime_config,
                     bot=None,
                     telegram=telegram,
+                    token=config.token,
                     secret_token=config.secret_token,
                     healthy=False,
                     health_reason=safe_error_summary(error),

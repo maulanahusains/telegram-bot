@@ -102,3 +102,21 @@ class InvalidAdminAPIKeyError(PlatformError):
     status_code = 401
     code = "invalid_admin_api_key"
     public_message = "Invalid admin API key."
+
+
+class AuthenticationRequiredError(PlatformError):
+    status_code = 401
+    code = "authentication_required"
+    public_message = "Authentication is required."
+
+
+class InvalidTelegramInitDataError(PlatformError):
+    status_code = 401
+    code = "invalid_telegram_init_data"
+    public_message = "Telegram authentication data is invalid or expired."
+
+
+class SessionExpiredError(PlatformError):
+    status_code = 401
+    code = "session_expired"
+    public_message = "Authentication session is invalid or expired."

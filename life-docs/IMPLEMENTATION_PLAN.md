@@ -48,19 +48,19 @@ Completion criteria: relocation checklist is closed or explicit blocker is recor
 
 Objective: add a secure user API boundary, server-side Telegram WebApp `initData` verification, global Telegram identity resolution, and short-lived authenticated session context.
 
-Expected files/modules affected: under `backend/`, likely `backend/app/main.py`, new user auth/API route(s), config, auth/session services/repositories/models, shared exceptions/responses, Alembic migration; root/deployment config only when session origin requires it.
+Implemented files/modules: `backend/app/platform/auth/`, `backend/app/api/user_auth.py`, `backend/app/main.py`, runtime bot credential context, settings, shared auth exceptions, Alembic metadata/imports, and one platform-only migration. No Life module was created.
 
-Migrations: application session table only if server-side PostgreSQL sessions are chosen. No Life domain tables.
+Migrations: `20260815_0004_platform_auth_sessions.py` creates only `application_sessions`. No Life domain tables.
 
-Verification: signature validation fixtures, session expiry/revocation, unauthenticated API behavior, preservation of webhook/admin auth.
+Verification: Telegram `initData` fixtures for valid signature, invalid signature, expired `auth_date`, malformed payload, unknown/disabled launching bot, and verified user resolution; session creation, opaque-token hashing, expiry, revocation/logout, and user isolation; unauthenticated/authenticated `/api/v1/me`; preservation of webhook/admin auth. Repository policy prohibits this agent from executing these checks.
 
 Prerequisites: Phase 0A/0B complete; review current Telegram WebApp verification specification; decide same-site cookie versus separate-origin token strategy.
 
-Deliverable: verified `initData` resolves/upserts existing `telegram_users` and establishes authenticated API context under `/api/v1` (or accepted equivalent).
+Deliverable: implemented `POST /api/v1/auth/telegram`, `GET /api/v1/me`, and `POST /api/v1/auth/logout`. Verified `initData` resolves/upserts existing `telegram_users`, refreshes/creates the verified launching bot membership, and establishes a reusable authenticated API context under `/api/v1`.
 
 Out of scope: independent login, Life profile/features, Life bot, frontend feature screens.
 
-Completion criteria: browser never supplies trusted owner ID; invalid/stale initData fails safely; existing bot ingress remains separate.
+Completion criteria: browser never supplies trusted owner ID; invalid/stale initData fails safely; existing bot ingress remains separate. Runtime/test verification remains developer-pending under `AGENTS.md`.
 
 ## Phase 1.5 — Minimal frontend foundation
 

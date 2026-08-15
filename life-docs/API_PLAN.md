@@ -4,7 +4,7 @@
 
 **FACT:** current API endpoints are `/health`, `/admin/*`, and `/webhook/{bot_name}`. `backend/app/core/middleware.py` returns `{ok: false, error: {code, message, request_id}}` for application errors; webhook success uses `{ok: true, status: ...}`. There is no versioned user API.
 
-**PROPOSAL:** add a separate, user-authenticated API namespace such as `/api/v1/`. This avoids collision with webhook/admin routes and gives frontend contracts a version boundary. Reuse the existing error envelope/request ID convention. User API success responses should use typed resource/envelope schemas, not Telegram response text.
+**IMPLEMENTED IN PHASE 1:** `/api/v1/` is the separate user-authenticated API namespace. It avoids collision with webhook/admin routes and gives frontend contracts a version boundary. It reuses the existing error envelope/request ID convention; user API success responses use typed schemas, not Telegram response text.
 
 All routes below are planning contracts, not implementation requirements. They derive `owner_user_id` from authenticated server context; clients never provide it.
 
@@ -13,10 +13,12 @@ All routes below are planning contracts, not implementation requirements. They d
 | Endpoint concept | Purpose |
 | --- | --- |
 | `POST /api/v1/auth/telegram` | Submit raw signed Telegram WebApp `initData`; backend validates it, resolves/upserts global Telegram user, creates session, returns bootstrap/session response. |
-| `GET /api/v1/auth/me` | Return authenticated Life profile/bootstrap identity and auth expiry. |
+| `GET /api/v1/me` | Return authenticated platform bootstrap identity and auth expiry; no Life profile is included. |
 | `POST /api/v1/auth/logout` | Revoke/delete server session. |
 
 Outside Telegram, `POST /api/v1/auth/telegram` rejects absent/invalid initData with an explicit unauthenticated error. Browser login is deferred, not silently replaced by an insecure user-ID parameter.
+
+**IMPLEMENTED IN PHASE 1:** the request contains `launching_bot_name` and raw `init_data`. The name is only a lookup key: the server validates its configured/enabled runtime, uses that runtime's encrypted/decrypted credential internally to verify Telegram's `WebAppData` HMAC, then resolves global `telegram_users.id`. Responses deliberately omit internal user/bot IDs and raw session material. `GET /api/v1/me` uses the HttpOnly session cookie; future Life routes use the platform authenticated-user dependency rather than accepting an owner ID.
 
 ## Endpoint groups
 
@@ -98,4 +100,4 @@ Use existing error shape and request ID. Add typed error codes such as `authenti
 
 ## CORS/session deployment note
 
-There is no existing CORS middleware. Add an explicit allowlist only after frontend/backend origin/deployment is chosen. If a same-site cookie session is selected, prefer same-origin reverse proxy hosting to minimize CORS/CSRF complexity; otherwise define credentialed CORS, CSRF protection, and token storage rules before frontend implementation.
+There is no CORS middleware and Phase 1 intentionally does not add one. The implemented opaque server session is delivered with configurable `Secure`, `HttpOnly`, `SameSite` cookie attributes and is scoped to `/api/v1`; defaults are Secure + Lax. Prefer same-origin reverse-proxy deployment in Phase 1.5. A separate frontend origin requires an explicit credentialed origin allowlist and CSRF decision before enabling it; never use wildcard CORS with cookies.

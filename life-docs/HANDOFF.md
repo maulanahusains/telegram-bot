@@ -4,10 +4,10 @@
 
 1. Read `life-docs/README.md`, `STATE.md`, `DECISIONS.md`, and `IMPLEMENTATION_PLAN.md` before touching production files.
 2. Read the phase-relevant design docs: `ARCHITECTURE.md`, `DATA_MODEL.md`, `API_PLAN.md`, `REMINDERS.md`, `FRONTEND_PLAN.md`, and `PRODUCT.md` as applicable.
-3. If the current phase is 0A/0B, read `RELOCATION_PLAN.md` before changing any root/backend paths.
+3. Read `RELOCATION_PLAN.md` before changing any root/backend paths or before running the deferred developer relocation checks. Phase 0B completed structural verification; its runtime/import/Alembic/Compose commands remain developer-pending under `AGENTS.md`.
 4. Run read-only `git status --short` and `git diff --stat`; inspect any existing diff before assuming it belongs to your task. Preserve unrelated user work.
 5. Use `STATE.md` to identify the current phase and confirm all prerequisites/completion criteria. Do not start a later phase early.
-6. Inspect the current source because documents may be stale. Phase 0A has relocated backend anchors under `backend/app/`; run backend-local Python/Alembic work from `backend/` and use its Makefile so the authoritative root `../.env` is explicitly exported.
+6. Inspect the current source because documents may be stale. Phase 0A relocated backend anchors under `backend/app/`, and Phase 0B verified the path/configuration diff. Run backend-local Python/Alembic work from `backend/` and use its Makefile so the authoritative root `../.env` is explicitly exported.
 
 ## During implementation
 
@@ -17,10 +17,13 @@
 - Never make a REST endpoint invoke/simulate a Telegram router. Both transports call application services.
 - Preserve `life-docs/` at repository root, outside both backend and frontend.
 - Preserve deterministic structured behavior: no AI/LLM/NLP additions.
+- Phase 1 platform auth belongs in `backend/app/platform/auth/`, never a product module. Use its authenticated-user dependency for user-facing APIs; never accept an owner ID as authorization proof.
+- The Phase 1 session is an opaque HttpOnly cookie backed by `application_sessions`. Do not expose or log raw initData, session tokens, or bot credentials; use the configured launching runtime to verify Mini App data.
 
 ## Migrations and verification
 
 - Before creating/changing a migration, inspect `backend/alembic.ini`, `backend/migrations/env.py`, latest revision, and the data-model section for the active phase.
+- Phase 1 added `backend/migrations/versions/20260815_0004_platform_auth_sessions.py`. It is platform infrastructure, not a Life migration; do not add Life tables until the authorized Phase 2 work.
 - Confirm migration head/order with the developer-approved Alembic command only when the task scope authorizes it. Do not assume migration has been applied merely because a file exists.
 - This repository’s current `AGENTS.md` prohibits agents from running tests, linters, formatters, type checks, builds, and runtime validation unless a user explicitly changes that verification policy. Follow it; recommend relevant developer checks in handoff instead.
 - The planning inspection found no committed test files. If tests are introduced, record their commands/coverage in `STATE.md` and phase completion criteria.

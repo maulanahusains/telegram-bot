@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,6 +45,28 @@ class Settings(BaseSettings):
 
     startup_db_max_attempts: int = Field(default=5, ge=1, le=30)
     startup_db_backoff_seconds: float = Field(default=1, gt=0, le=30)
+
+    telegram_web_app_init_data_max_age_seconds: int = Field(
+        default=300, ge=30, le=3600
+    )
+    telegram_web_app_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
+    application_session_ttl_seconds: int = Field(
+        default=86_400, ge=300, le=2_592_000
+    )
+    application_session_cookie_name: str = Field(
+        default="telegram_platform_session", min_length=1, max_length=128
+    )
+    application_session_cookie_secure: bool = True
+    application_session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
+    @model_validator(mode="after")
+    def validate_session_cookie(self) -> Settings:
+        if (
+            self.application_session_cookie_samesite == "none"
+            and not self.application_session_cookie_secure
+        ):
+            raise ValueError("SameSite=None session cookies must be Secure.")
+        return self
 
     @field_validator("log_level")
     @classmethod

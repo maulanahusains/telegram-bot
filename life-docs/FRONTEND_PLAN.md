@@ -90,7 +90,7 @@ Use bottom navigation or compact tab navigation for the five requested primary d
 
 ## Session/data fetching
 
-On startup, frontend detects Telegram, sends `initData` exactly to the auth exchange, then uses HTTP-only cookie or selected API credential according to Phase 1. It fetches `/auth/me`/profile bootstrap before feature routes. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens or raw initData in local storage beyond immediate exchange.
+On startup, frontend detects Telegram, sends `initData` with the launching bot name exactly to `POST /api/v1/auth/telegram`, then relies on the Phase 1 HTTP-only cookie. It fetches `GET /api/v1/me` before feature routes. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens, session tokens, or raw initData in local storage beyond the immediate exchange.
 
 ## Testing plan when implementation begins
 

@@ -154,3 +154,16 @@ Context: CONFIRMED REQUIREMENT. FACT — `app/`, `migrations/`, `Dockerfile`, `p
 Alternatives considered: defer relocation; move Compose into backend; combine move with Life schema/features.
 
 Consequences: relocation is an isolated, reviewable rename/path-update change with no Life migration. Root Compose can later add frontend service/networking while backend retains Docker/Python/Alembic ownership. See `RELOCATION_PLAN.md`.
+
+## DEC-014 — Platform Mini App sessions use PostgreSQL and secure cookies
+
+Status: Accepted
+Date: 2026-08-15
+
+Decision: Implement Telegram Mini App authentication under `backend/app/platform/auth/`. A request supplies a configured launching bot name and raw `initData`; the server resolves an enabled runtime, verifies the Telegram WebApp HMAC with that runtime's decrypted token, upserts `telegram_users`, resolves the launching bot's `bot_users` membership, and creates a short-lived opaque server session. Store only a SHA-256 session-token hash in `application_sessions`; issue the raw token only as a configurable Secure, HttpOnly, SameSite cookie scoped to `/api/v1`.
+
+Context: CONFIRMED REQUIREMENT — auth must be reusable by Life, Finance, Islamic, and later frontend modules, with no new `application_users` table. FACT — PostgreSQL and encrypted database-backed bot credentials already exist; Redis, browser login, and a frontend origin do not. Telegram's current official Mini App documentation specifies an HMAC data-check-string derived from the launching bot token and `WebAppData`.
+
+Alternatives considered: Life-local auth; unsigned browser-supplied Telegram ID; client-held bearer/JWT tokens; Redis sessions; password/OAuth login; a database session without a cookie.
+
+Consequences: the authenticated application owner is always `telegram_users.id`, never a request-selected ID or `bot_users.id`. Bot membership is refreshed/created only for the verified launching bot and remains a transport permission check. Cookies assume same-site deployment; CORS is intentionally not enabled until a frontend origin is known. Existing sessions become unusable if their launching bot is disabled or the relevant bot membership is no longer active.

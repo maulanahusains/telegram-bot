@@ -82,6 +82,7 @@ class RuntimeBot:
     config: BotRuntimeConfig
     bot: BaseBot | None
     telegram: TelegramBotClient
+    token: SecretStr
     secret_token: SecretStr
     healthy: bool = True
     health_reason: str | None = None

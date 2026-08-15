@@ -12,6 +12,10 @@ SENSITIVE_KEYS = {
     "authorization",
     "bot_credential_keys",
     "database_url",
+    "init_data",
+    "cookie",
+    "set-cookie",
+    "session",
     "secret",
     "secret_token",
     "token",
@@ -70,4 +74,3 @@ __all__ = [
     "get_logger",
     "unbind_contextvars",
 ]
-

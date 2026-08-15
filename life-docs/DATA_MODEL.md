@@ -7,6 +7,20 @@
 - **PROPOSAL:** store instants as timezone-aware UTC timestamps; validate/store IANA timezone names; use local dates only where a user’s calendar day matters.
 - **PROPOSAL:** table names use `life_` prefixes because current module tables use module prefixes (`finance_*`, `islamic_*`). Names are planning names, not migrations.
 
+## Implemented platform authentication persistence (not a Life entity)
+
+### `application_sessions` — implemented in Phase 1
+
+Purpose: reusable authenticated browser/Mini App session state for current and future product modules.
+
+Ownership: `user_id → telegram_users.id`; `launching_bot_id → telegram_bots.id`. It establishes API identity but does not own any Life resource and is not a replacement for `bot_users` membership.
+
+Major fields: `id`, SHA-256 `token_hash`, `user_id`, `launching_bot_id`, `expires_at`, `last_seen_at`, `revoked_at`, timestamps.
+
+Constraints/indexes: unique token hash; indexes `(user_id, expires_at)` and `(user_id, launching_bot_id, revoked_at)` for rotation/revocation lookup. Raw session token and raw Telegram `initData` are never stored.
+
+Relationships: the authenticated platform dependency resolves this row plus active launching-bot membership to produce the internal `telegram_users.id` context used by future user-facing APIs.
+
 ## Identity/settings
 
 ### `life_profiles` — MVP

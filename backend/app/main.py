@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.admin import router as admin_router
 from app.api.health import router as health_router
+from app.api.user_auth import router as user_auth_router
 from app.api.webhook import router as webhook_router
 from app.core.config import get_settings
 from app.core.lifespan import lifespan
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
     install_exception_handlers(application)
     application.include_router(health_router)
     application.include_router(admin_router)
+    application.include_router(user_auth_router)
     application.include_router(webhook_router)
     return application
 

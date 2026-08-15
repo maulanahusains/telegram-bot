@@ -37,6 +37,6 @@ Then inspect `git status --short`, verify the current implementation phase, and 
 
 **Frontend strategy:** create a separate responsive TypeScript frontend only after backend identity/API foundations are ready. Its primary MVP entry is Telegram Mini App `initData` verified by the backend; it must also render a safe “open in Telegram” fallback outside Telegram. Independent browser login is deferred.
 
-**Next implementation phase:** Phase 0B in `RELOCATION_PLAN.md` and `IMPLEMENTATION_PLAN.md` — perform the baseline verification/documentation closure that was intentionally deferred by repository policy after Phase 0A relocated the backend to `backend/`. Do not begin Life tables, feature code, or frontend until Phase 0B is complete.
+**Next implementation phase:** Phase 1.5 in `IMPLEMENTATION_PLAN.md` — minimal frontend foundation and real Mini App auth bootstrap. Phase 1 implemented the reusable platform auth API and server session foundation; do not begin Life feature tables or rich feature screens in Phase 1.5.
 
-**Remaining implementation-level questions:** exact grace-window value (60 minutes is planned), group/private destination activation UX, and same-origin cookie versus separate-origin token session deployment. These do not reopen the accepted ownership/reminder/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.
+**Remaining implementation-level questions:** exact grace-window value (60 minutes is planned), group/private destination activation UX, and final same-origin reverse-proxy/frontend deployment details. These do not reopen the accepted ownership/reminder/session/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.

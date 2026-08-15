@@ -87,14 +87,14 @@ sequenceDiagram
     A->>A: Validate HMAC, bot token binding, auth_date freshness
     A->>D: Resolve/upsert telegram_users row
     A->>A: Create short-lived authenticated session/token
-    A-->>M: Session + current user/profile bootstrap
+    A-->>M: Session + platform identity bootstrap
     M->>A: Authenticated /api/v1/life/* calls
     A->>D: Enforce owner_user_id on every resource
 ```
 
-**ACCEPTED:** expose a dedicated endpoint such as `POST /api/v1/auth/telegram` that accepts raw signed `initData`; validate it server-side according to the Telegram WebApp verification specification current at implementation time. Validate freshness (`auth_date`) with a configurable short window, use constant-time signature comparison, and never accept `user.id` separately as proof.
+**IMPLEMENTED IN PHASE 1:** `backend/app/platform/auth/` owns the reusable auth service, session repository/model, schemas, and authenticated-user dependency. `POST /api/v1/auth/telegram` validates raw signed `initData` against an enabled launching runtime selected by configured bot name. It parses the query string once, rejects duplicates/malformed data, calculates Telegram's `WebAppData` HMAC using the runtime's decrypted bot token, compares hashes in constant time, checks configurable `auth_date` freshness/skew, and only then parses the Telegram user. It never logs or stores raw initData or a bot token.
 
-**Session proposal:** same-site, Secure, HttpOnly short-lived cookie session is the simplest Mini App/browser API interface if frontend and API share a site/origin; server-side session records in PostgreSQL are preferred initially because no Redis exists. A short-lived signed bearer access token with server-side refresh/session revocation is an acceptable alternative if frontend/API need separate origins. Choose one in Phase 1 after deployment origins are final; do not expose admin API keys or Telegram bot token to frontend.
+**IMPLEMENTED IN PHASE 1:** a PostgreSQL `application_sessions` table stores a SHA-256 hash of an opaque random session token, the global user, launching bot, expiry, last-seen, and revocation timestamps. The raw token is issued only in a configurable Secure/HttpOnly/SameSite cookie scoped to `/api/v1`; `GET /api/v1/me` and future user APIs derive internal identity through the platform dependency. New login rotates active sessions for that user+launching-bot pair; logout revokes the stored row. No raw token, raw initData, or bot credential is persisted. Same-origin deployment is assumed until Phase 1.5 finalizes frontend deployment; CORS remains absent rather than insecurely permissive.
 
 Opening from different chats changes launch context, not `owner_user_id`. The backend may record/validate an optional launch chat only to preselect a notification destination after authorization. When opened outside Telegram, show an unauthenticated “Open in Telegram” page; independent login is deferred.
 

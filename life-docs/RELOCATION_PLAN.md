@@ -108,3 +108,13 @@ Completed structurally on 2026-08-15.
 - `ARCHITECTURE_ANALYSIS.md` was absent and not tracked at execution time, so no historical-document move was performed.
 - No Life source, migration, API, authentication, scheduler, bot, or frontend work was introduced.
 - Automated relocation validation remains pending because repository instructions prohibit agents from running tests, builds, type checks, Docker validation, Alembic commands, and runtime checks. The planned commands above are for a developer or later explicitly authorized task.
+
+## Phase 0B verification record
+
+Completed on 2026-08-15 under the repository verification policy.
+
+- Passed permitted read-only checks: clean `git status --short` before the Phase 0B documentation update, `git diff --check`, Git history/diff review, relocated-file topology review, stale-path scan, migration revision-chain inspection, and root `.env` tracking/topology inspection.
+- The actual relocation commit contains 82 exact 100% renames and zero source/migration content edits. The following relocation patch changes only paths, Compose configuration, root-environment loading convention, guidance, and documentation; no Finance, Islamic, platform, API, scheduler, or migration behavior was intentionally changed.
+- Verified statically: `backend/app/` and `backend/migrations/` exist; Alembic retains `script_location = migrations` and `prepend_sys_path = .`; Compose uses `./backend` contexts and relocated development mounts; Docker retains backend-relative container copies and `app.main:app`; the migration chain is `20260731_0001` → `20260801_0002` → `20260801_0003`; no Life migration/module or frontend directory exists.
+- Root `.env` is the only discovered `.env`, is untracked, and is ignored. Compose references `./.env`; backend Make targets explicitly source `../.env`; backend documentation records the same direct-`uv` convention. Values were not printed.
+- Not run because `AGENTS.md` prohibits tests, builds, type checks, Docker/Alembic/runtime validation: Python import command, Alembic `heads`/`current`, `docker compose config`, Docker dev build/start/health/down, and any external Telegram activity. These remain developer-pending before a deployment/release, not a reason to begin unrelated refactoring.

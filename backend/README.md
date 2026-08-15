@@ -156,6 +156,7 @@ The Alembic migrations create:
 - `bot_users`
 - `bot_user_states`
 - `telegram_updates`
+- `application_sessions`
 - `sample_user_profiles`
 - `finance_profiles`
 - `finance_budget_periods`
@@ -211,9 +212,43 @@ Important environment variables:
 | `UPDATE_MAX_ATTEMPTS` | Maximum handler claims for one update. |
 | `UPDATE_LEASE_SECONDS` | Duration before a crashed claim becomes reclaimable. |
 | `STATE_CONFLICT_RETRIES` | Bounded retries for sample counter CAS conflicts. |
+| `TELEGRAM_WEB_APP_INIT_DATA_MAX_AGE_SECONDS` | Maximum accepted age of signed Telegram Mini App `initData` (default 300). |
+| `APPLICATION_SESSION_TTL_SECONDS` | Opaque browser/Mini App session lifetime (default 86400). |
+| `APPLICATION_SESSION_COOKIE_*` | Cookie name and Secure/HttpOnly session-delivery settings. |
 
 Each bot has its own encrypted token and secret in `telegram_bots`. There is no
 global Telegram secret environment variable.
+
+## User-facing Mini App authentication
+
+The reusable platform authentication API is separate from Telegram webhook
+handling and bot modules:
+
+- `POST /api/v1/auth/telegram` accepts raw Telegram WebApp `initData` plus the
+  configured launching bot name.
+- `GET /api/v1/me` returns the authenticated display identity and sanitized
+  launching-bot descriptor.
+- `POST /api/v1/auth/logout` revokes the current session.
+
+The server resolves the enabled runtime bot, uses its decrypted credential only
+inside the server to validate Telegram's `WebAppData` HMAC, checks `auth_date`,
+then resolves/upserts the global `telegram_users` identity. It never accepts a
+browser-supplied owner ID, stores raw `initData`, returns a bot credential, or
+stores a plaintext session token. The raw opaque session token is issued only as
+a configurable Secure, HttpOnly, SameSite cookie; PostgreSQL stores its hash in
+`application_sessions` with expiry and revocation state.
+
+No CORS middleware is enabled yet. The intended Phase 1.5 deployment is
+same-origin frontend/API hosting. A future separate frontend origin requires an
+explicit credentialed CORS/CSRF decision; never use wildcard CORS with cookies.
+
+Developer verification cases, when repository policy authorizes execution:
+
+- valid, invalid, expired, and malformed Mini App `initData`;
+- unknown/disabled launching bot rejection;
+- global Telegram-user upsert and launching-bot membership status handling;
+- session creation, expiry, revocation, cookie attributes, and hashed storage;
+- unauthenticated/authenticated `/api/v1/me` and logout behavior.
 
 ## Docker Deployment
 
