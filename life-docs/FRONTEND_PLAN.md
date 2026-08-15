@@ -75,7 +75,7 @@ Only boundaries needed by this thin slice were created. Future product folders o
 | `/settings` | Settings | profile/timezone/goals/destinations/preferences |
 | `/foods`, `/meal-templates`, `/meal-logs` | nested or modal routes | structured nutrition management |
 
-The implemented authenticated shell only shows display name, launching bot/module, session expiry, and logout. Today/Planner/Grocery/Progress/Settings navigation is deferred with their Life backend slices. Do not make Telegram viewport dimensions a required layout assumption.
+**IMPLEMENTED IN PHASE 3.5:** `/app/planner` provides the first real vertical slice: list, structured create form, destination selection, one-time/daily/weekday recurrence fields, enable/disable, and delete. `/app/settings` provides compact profile/timezone, effective nutrition targets, destination candidates/activation, enablement, and default selection. Today/Grocery/Progress and foods/weight/Fitness screens remain deferred. Do not make Telegram viewport dimensions a required layout assumption.
 
 ## MVP interaction details
 
@@ -88,8 +88,12 @@ The implemented authenticated shell only shows display name, launching bot/modul
 
 ## Session/data fetching
 
-On startup, the frontend first fetches `GET /api/v1/me`. If that session is unauthenticated and the `/tg/:launchingBot` route has a valid configured-name-shaped hint plus Telegram raw `initData`, it sends exactly those two fields to `POST /api/v1/auth/telegram`, then invalidates/refetches `/me`. It relies on the Phase 1 HTTP-only cookie afterwards. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens, session tokens, or raw initData in browser storage beyond the immediate exchange.
+On startup, the frontend first fetches `GET /api/v1/me`. If that session is unauthenticated and the `/tg/:launchingBot` route has a valid configured-name-shaped hint plus Telegram raw `initData`, it sends exactly those two fields to `POST /api/v1/auth/telegram`, then invalidates/refetches `/me`. It relies on the Phase 1 HTTP-only cookie afterwards. Planner and Settings queries are owned by TanStack Query and invalidate server state after mutations; recurrence, ownership, and destination eligibility remain canonical backend rules. Handle session expiry by returning to bootstrap/open-in-Telegram state; never persist bot tokens, session tokens, or raw initData in browser storage beyond the immediate exchange.
 
 ## Testing plan when implementation begins
 
 The repository has no frontend test toolchain yet. Per `AGENTS.md`, this phase does not run automated tests/builds. A future authorized test setup should cover the WebApp adapter with mocked `window.Telegram`, session-first bootstrap, auth error/fallback states, launch-route extraction, and logout query clearing.
+
+## Telegram entry integration
+
+**IMPLEMENTED IN PHASE 4:** Life uses `/tg/:launchingBot` consistently. Private chat `/app` buttons use Telegram’s `web_app` mechanism with the matching frontend route. Group/supergroup entry requires each configured Life bot’s Telegram Main Mini App to be configured in BotFather with that route; the bot sends its `t.me/{username}?startapp=life` direct link. The frontend still treats the route/start parameter as a hint only and submits raw `initData` to backend auth.

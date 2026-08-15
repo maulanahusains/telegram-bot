@@ -120,3 +120,21 @@ class SessionExpiredError(PlatformError):
     status_code = 401
     code = "session_expired"
     public_message = "Authentication session is invalid or expired."
+
+
+class LifeNotFoundError(PlatformError):
+    status_code = 404
+    code = "life_resource_not_found"
+    public_message = "The requested Life resource was not found."
+
+
+class LifeForbiddenError(PlatformError):
+    status_code = 403
+    code = "life_forbidden"
+    public_message = "You are not allowed to perform this Life action."
+
+
+class LifeValidationError(PlatformError):
+    status_code = 422
+    code = "life_validation_error"
+    public_message = "Life request data is invalid."

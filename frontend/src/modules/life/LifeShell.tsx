@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { logout, type CurrentUser } from "../../app/api/auth";
 
@@ -24,7 +24,7 @@ export function LifeShell({ user, returnPath }: LifeShellProps) {
     <main className="app-page">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Authenticated session</p>
+          <p className="eyebrow">Life</p>
           <h1>Welcome, {displayName}</h1>
         </div>
         <button
@@ -37,26 +37,8 @@ export function LifeShell({ user, returnPath }: LifeShellProps) {
         </button>
       </header>
 
-      <section className="app-card">
-        <h2>Application shell is ready</h2>
-        <dl>
-          <div>
-            <dt>Launching bot</dt>
-            <dd>{user.launching_bot.name}</dd>
-          </div>
-          <div>
-            <dt>Module</dt>
-            <dd>{user.launching_bot.module_name}</dd>
-          </div>
-          <div>
-            <dt>Session expires</dt>
-            <dd>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(user.session_expires_at))}</dd>
-          </div>
-        </dl>
-        <p>
-          Life screens are intentionally not available yet. This shell validates the shared frontend, Mini App, and platform-authentication boundary.
-        </p>
-      </section>
+      <nav className="app-nav" aria-label="Life navigation"><NavLink to="/app/planner">Planner</NavLink><NavLink to="/app/settings">Settings</NavLink></nav>
+      <Outlet />
     </main>
   );
 }

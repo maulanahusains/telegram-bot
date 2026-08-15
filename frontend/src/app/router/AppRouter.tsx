@@ -3,10 +3,12 @@ import { Navigate, useParams } from "react-router-dom";
 import { useAuthBootstrap } from "../auth/useAuthBootstrap";
 import { AppState } from "../../shared/components/AppState";
 import { LifeShell } from "../../modules/life/LifeShell";
+import { PlannerPage } from "../../modules/life/PlannerPage";
+import { SettingsPage } from "../../modules/life/SettingsPage";
 
 export function LaunchRoute() {
   const { launchingBot } = useParams<{ launchingBot: string }>();
-  return <BootstrapPage launchingBot={launchingBot} returnPath={launchingBot ? `/tg/${launchingBot}` : "/app"} />;
+  return <BootstrapPage launchingBot={launchingBot} returnPath={launchingBot ? `/tg/${launchingBot}` : "/app"} launchOnly />;
 }
 
 export function AppRoute() {
@@ -17,14 +19,14 @@ export function RootRoute() {
   return <Navigate to="/app" replace />;
 }
 
-function BootstrapPage({ launchingBot, returnPath }: { launchingBot?: string; returnPath: string }) {
+function BootstrapPage({ launchingBot, returnPath, launchOnly = false }: { launchingBot?: string; returnPath: string; launchOnly?: boolean }) {
   const state = useAuthBootstrap(launchingBot);
 
   switch (state.kind) {
     case "loading":
       return <AppState title="Connecting to Telegram">Checking your secure application session…</AppState>;
     case "authenticated":
-      return <LifeShell user={state.user} returnPath={returnPath} />;
+      return launchOnly ? <Navigate to="/app/planner" replace /> : <LifeShell user={state.user} returnPath={returnPath} />;
     case "outside_telegram":
       return <AppState title="Open this app from Telegram">Sign-in for this MVP uses Telegram Mini App verification. Open the application from a configured Telegram bot to continue.</AppState>;
     case "missing_launch_context":
@@ -37,3 +39,5 @@ function BootstrapPage({ launchingBot, returnPath }: { launchingBot?: string; re
       return <AppState title="Service temporarily unavailable">{state.message}</AppState>;
   }
 }
+
+export { PlannerPage, SettingsPage };

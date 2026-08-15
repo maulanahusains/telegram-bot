@@ -215,6 +215,7 @@ Important environment variables:
 | `TELEGRAM_WEB_APP_INIT_DATA_MAX_AGE_SECONDS` | Maximum accepted age of signed Telegram Mini App `initData` (default 300). |
 | `APPLICATION_SESSION_TTL_SECONDS` | Opaque browser/Mini App session lifetime (default 86400). |
 | `APPLICATION_SESSION_COOKIE_*` | Cookie name and Secure/HttpOnly session-delivery settings. |
+| `LIFE_REMINDER_EXECUTOR_*` | Explicit Life executor enablement, polling, batch, lease, retry, and one-time grace settings. Enable the executor in one designated process only. |
 
 Each bot has its own encrypted token and secret in `telegram_bots`. There is no
 global Telegram secret environment variable.

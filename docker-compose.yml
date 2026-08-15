@@ -90,7 +90,7 @@ services:
     restart: unless-stopped
 
   cloudflared:
-    profiles: ["dev"]
+    profiles: ["dev","prod"]
     image: cloudflare/cloudflared:latest
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}

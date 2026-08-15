@@ -1,8 +1,8 @@
 # Current State
 
-Last updated: 2026-08-15
-Current phase: Phase 1.5 completed.
-Status: The responsive Mini App/web frontend foundation, Telegram adapter, multi-bot launch routing, real platform-auth bootstrap, authenticated shell, logout, outside-Telegram fallback, and Docker support are implemented. Runtime validation remains developer-pending because repository policy prohibits agents from executing it.
+Last updated: 2026-08-16
+Current phase: Phase 4 completed.
+Status: Life profile/goals/destinations, durable Planner reminders, the Planner frontend vertical slice, and the Life Telegram entry/notification transport are implemented. Runtime validation remains developer-pending because repository policy prohibits agents from executing it.
 
 ## Completed
 
@@ -22,6 +22,13 @@ Status: The responsive Mini App/web frontend foundation, Telegram adapter, multi
 - Added a temporary Life-first authenticated shell with minimal display information and logout only. No Today, Planner, Grocery, Progress, Settings, or Life domain UI/functionality exists.
 - Added frontend Docker support: `frontend/Dockerfile` has Vite development and Nginx production targets; root Compose has `frontend-dev` and `frontend` profile services. The Nginx service demonstrates the accepted same-origin API/webhook/health/admin proxy topology.
 - Accepted DEC-015 (same-origin frontend/API deployment) and DEC-016 (public multi-bot `/tg/:launchingBot` launch context).
+- Completed Phase 2: registered `backend/app/modules/life/`, profile/goals/destination persistence, typed authenticated Life API, and migration `20260816_0005_life_profile_goals_destinations.py`.
+- Accepted DEC-017: only a Life-bot webhook-observed user/chat candidate can be explicitly activated as a notification destination. No browser-supplied raw chat ID is accepted.
+- Completed Phase 3: reminder definition/occurrence persistence, configured one-time grace, bounded retry, database claims/leases, constrained daily/weekly recurrence, owner-scoped Planner API, and migration `20260816_0006_life_planner_reminders.py`.
+- Accepted DEC-018 for constrained recurrence, DST resolution, and explicit database-claimed executor lifecycle.
+- Completed Phase 3.5: authenticated `/app/planner` and `/app/settings` routes, typed Life API client, structured Planner forms/list controls, and compact profile/goal/destination configuration UI.
+- Completed Phase 4: `/start` and `/app`, context-aware Mini App entry buttons, privacy-aware reminder rendering, candidate observation, executor delivery integration, and owner-only Done/Skip callbacks.
+- Accepted DEC-019 for private `web_app` versus group Main Mini App direct-link behavior.
 
 ## In progress
 
@@ -29,13 +36,13 @@ Status: The responsive Mini App/web frontend foundation, Telegram adapter, multi
 
 ## Next
 
-1. Begin Phase 2 — Life profile, goals, and explicitly activated Telegram notification destinations — only when explicitly authorized.
+1. Begin Phase 5 — Nutrition, weight, and Fitness backend/API — only when explicitly authorized.
 2. Before a deployment/release, have a developer run the deferred relocation, Phase 1, and Phase 1.5 import, Alembic, Compose, frontend build, migration, and local-stack smoke checks.
 
 ## Blockers
 
-- No known structural blocker for Phase 2. Developer runtime verification of the relocated backend, Phase 1 auth flow, and Phase 1.5 frontend/Compose integration remains pending because repository policy prohibits this agent from executing it.
-- Product implementation still needs exact grace-window value and destination activation UX; these do not reopen accepted identity, reminder, session, launch-route, or same-origin decisions.
+- No known structural blocker for Phase 5. Developer runtime verification of the relocated backend, Phase 1 auth flow, Phase 1.5 frontend/Compose integration, Phase 2/3 migrations/APIs/executor/frontend, and Phase 4 Telegram/BotFather configuration remains pending because repository policy prohibits this agent from executing it.
+- Product implementation still needs the product owner to confirm the configured production grace-window value (60 minutes is the implemented default); this does not reopen accepted identity, reminder, session, launch-route, or same-origin decisions.
 
 ## Accepted planning decisions
 
@@ -58,25 +65,26 @@ Status: The responsive Mini App/web frontend foundation, Telegram adapter, multi
 
 ## Life feature implementation
 
-- Not started. No Life models, migrations, profile/nutrition/reminder/planner/workout/grocery feature code, Life Telegram bot code, or AI/LLM functionality exists. The frontend exists only as reusable platform-authentication foundation and a minimal Life-first shell; it contains no Life product feature.
+- Implemented through Phase 4: platform auth/frontend foundation; Life profile, effective-dated nutrition target configuration, explicit notification destinations; Planner definitions and durable occurrence executor; Planner/Settings UI; Life Telegram entry and group-safe quick-action transport. Foods/templates/logs, weight, Fitness, Grocery, Progress, and full Today remain unimplemented.
 
 ## Confirmed operational state
 
 - Backend location: `./backend`
-- Life feature implementation: not started
-- Life migrations: none (`application_sessions` is platform auth infrastructure)
-- Frontend: created at `./frontend` in Phase 1.5; no Life feature screens
+- Life feature implementation: implemented through Phase 4; runtime/manual verification remains pending
+- Life migrations: `20260816_0005_life_profile_goals_destinations.py` and `20260816_0006_life_planner_reminders.py` generated; not applied by this agent
+- Frontend: created at `./frontend`; Planner and compact Settings screens were added in Phase 3.5
 - Canonical Life owner: `telegram_users.id`
 - Group/supergroup notification destinations: MVP confirmed; explicitly activated destinations only
-- Reminder architecture: PostgreSQL durable occurrence/claim model confirmed; one explicitly configured initial executor when Phase 3 is authorized
+- Reminder architecture: PostgreSQL durable occurrence/claim model implemented; it runs only when one designated process enables `LIFE_REMINDER_EXECUTOR_ENABLED`
 
-## Database migrations already applied/generated for Life
+## Database migrations generated for Life
 
-- None.
+- `20260816_0005_life_profile_goals_destinations.py` — generated, not applied by this agent.
+- `20260816_0006_life_planner_reminders.py` — generated, not applied by this agent.
 
 ## Verification status
 
-- Passed permitted checks: initial `git status --short` (clean before Phase 1), static source/configuration/credential-boundary review, migration-chain inspection, official Telegram Mini App validation-specification review, frontend source/Docker/Compose/documentation inspection, and `git diff --check` after Phase 1.5 changes.
+- Passed permitted checks: initial `git status --short` (clean before Phase 1), static source/configuration/credential-boundary review, migration-chain inspection, official Telegram Mini App validation-specification review, frontend source/Docker/Compose/documentation inspection, and static Phase 2 ownership/API/migration review.
 - Not run, per repository instruction: Python import startup, `uv`/Alembic commands, Compose rendering, npm/Vite build, Docker build/start/health smoke checks, tests, linters, formatters, type checks, and automated runtime validation.
 - Repository inspection found no committed test files matching common `test`/`tests` patterns. Phase 1 test cases are documented in `backend/README.md`; Phase 1.5 test targets are documented in `FRONTEND_PLAN.md` for a developer/authorized runtime task.
 
@@ -89,3 +97,4 @@ Status: The responsive Mini App/web frontend foundation, Telegram adapter, multi
 - Existing Finance/Islamic schedulers are in-process `asyncio` loops. Reuse their durable claim/locking ideas, not their module-specific schemas wholesale.
 - Current repository instructions prohibit automated checks unless a later user request changes that policy.
 - For local HTTP frontend development, set only the untracked root `.env` value `APPLICATION_SESSION_COOKIE_SECURE=false`; preserve the production-safe `true` default and never put tokens/initData in frontend configuration.
+- Before enabling group app entry, configure each Life bot’s Main Mini App in BotFather to its public `/tg/{configured_bot_name}` route. Direct-link `startapp` is not an authorization mechanism.

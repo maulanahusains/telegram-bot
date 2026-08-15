@@ -193,3 +193,42 @@ Context: CONFIRMED REQUIREMENT — one frontend may be launched by Life, Finance
 Alternatives considered: hardcoded Life route; frontend-selected bot token; a no-context `/app` login route; a separate frontend per bot.
 
 Consequences: `/tg/life`, `/tg/finance`, and `/tg/islamic` can share the application shell when configured. `/app` remains useful only for an already-valid cookie session; outside Telegram or without a launch context it shows a safe fallback.
+
+## DEC-017 — Server-observed destination eligibility before activation
+
+Status: Accepted
+Date: 2026-08-16
+
+Decision: A Life notification destination may only be activated from a server-recorded `life_destination_candidates` row. The Life bot records that candidate after a Telegram-authenticated interaction by the owner in the relevant private chat, group, or supergroup. The authenticated API exposes only that owner’s candidates and activates by candidate ID; it never accepts a raw Telegram chat ID.
+
+Context: CONFIRMED REQUIREMENT — groups are destinations, not owners, and arbitrary chat-ID selection is unsafe. FACT — webhook `UserContext` is derived from a verified Telegram update and contains global internal user and known internal chat IDs. Existing platform tables do not model user-specific group consent.
+
+Alternatives considered: accept `chat_id` from browser; automatically activate every observed chat; use `bot_users.metadata` for group evidence; require Telegram-admin verification for all MVP destinations.
+
+Consequences: a user must interact with the configured Life bot in a chat before selecting it in Settings, then explicitly activate it. This proves a server-observed user/chat/bot relationship without making a chat owner. Delivery failures can later disable the destination; group-admin permission checks are deferred unless a particular bot delivery error requires them.
+
+## DEC-018 — Constrained recurrence and database-claimed Life executor
+
+Status: Accepted
+Date: 2026-08-16
+
+Decision: Life Planner recurrence is a strict JSON configuration with only `daily` or `weekly` frequency, a local wall-clock time, and weekday values for weekly schedules. Definitions persist IANA timezone and UTC `next_run_at`; occurrences persist UTC scheduled instants. A `LifeReminderExecutor` polls definitions/occurrences, uses PostgreSQL `FOR UPDATE SKIP LOCKED`, claim tokens, and leases, then sends outside transactions.
+
+Context: CONFIRMED REQUIREMENT — no cron/RRULE/NLP, PostgreSQL is source of truth, no Redis/Celery, and missed recurring occurrences cannot bulk catch up. FACT — Finance/Islamic already demonstrate in-process asyncio lifecycle tasks and durable claim patterns, but have module-specific schemas.
+
+Alternatives considered: arbitrary cron/RRULE; in-memory timers; Celery/Redis; one reminder row without occurrences; holding DB locks during Telegram calls.
+
+Consequences: the initial executor is enabled only by `LIFE_REMINDER_EXECUTOR_ENABLED` in one designated process. One-time reminders older than the configuration-driven 3600-second default grace become `missed`; recurring overdue history is suppressed as `skipped` and advanced to the next future local occurrence. Ambiguous DST times use the earlier offset; nonexistent local times advance to the first valid minute. The executor class has no FastAPI request dependency and can later move to a worker composition root.
+
+## DEC-019 — Telegram Life entry uses context-appropriate Mini App links
+
+Status: Accepted
+Date: 2026-08-16
+
+Decision: The Life bot handles only `/start` and `/app`. In private chats it uses an inline `web_app` button to the same-origin `/tg/{configured_bot_name}` route. In groups/supergroups it uses the bot’s Telegram Main Mini App direct link `https://t.me/{bot_username}?startapp=life`, which requires BotFather configuration of that bot’s Main Mini App URL to the same frontend route. Reminder messages use the same context-aware Open Life button.
+
+Context: FACT — Telegram documents `web_app` inline buttons as private-chat-only, while Main Mini App direct links can open in the current chat and include chat context. CONFIRMED REQUIREMENT — group-compatible entry is required and must retain platform `initData` verification.
+
+Alternatives considered: use a private-only web_app button in groups; use the raw website URL in groups; create a second webhook; hardcode a bot token or user identity.
+
+Consequences: deployment/provisioning must configure a Main Mini App for each Life bot and point it at `/tg/{configured_bot_name}`. The `startapp` value is not ownership proof. The backend continues to verify raw `initData` against the launching configured runtime.

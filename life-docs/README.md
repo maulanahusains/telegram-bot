@@ -37,6 +37,10 @@ Then inspect `git status --short`, verify the current implementation phase, and 
 
 **Frontend strategy:** Phase 1.5 created one responsive React/TypeScript/Vite SPA at root `frontend/`. Its primary routes are `/tg/:launchingBot` for multi-bot Telegram Mini App launches and `/app` for valid-session reuse. It first checks the HttpOnly platform session, then submits raw `initData` only to backend verification. Production uses an accepted same-origin frontend/API topology; normal browsers render a safe “open in Telegram” fallback. Independent browser login is deferred.
 
-**Next implementation phase:** Phase 2 in `IMPLEMENTATION_PLAN.md` — Life profile, goals, and explicitly activated Telegram notification destinations. Phase 1.5 implemented only the frontend foundation and real platform-auth bootstrap; it did not create Life tables or feature screens.
+**Current implementation checkpoint:** Phase 2 created the registered Life module, profile and effective-dated nutrition-goal persistence, and explicit notification destinations. A destination can only be activated from a server-observed user/chat candidate after an authenticated interaction with the Life bot; it is never owned by a chat.
+
+**Planner frontend checkpoint:** Phase 3.5 adds real `/app/planner` and `/app/settings` surfaces over the authenticated Life API. They are deliberately limited to Planner/profile/goals/destinations; no other Life domain UI exists yet.
+
+**Telegram checkpoint:** Phase 4 adds the Life bot entry and notification transport: `/start`, `/app`, secure candidate observation, context-appropriate Mini App links, privacy-aware group delivery, and owner-only Done/Skip callbacks.
 
 **Remaining implementation-level questions:** exact grace-window value (60 minutes is planned) and group/private destination activation UX. These do not reopen the accepted ownership/reminder/session/relocation decisions. See `DECISIONS.md`, `PRODUCT.md`, and `RELOCATION_PLAN.md`.

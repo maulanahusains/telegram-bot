@@ -58,6 +58,32 @@ button { font: inherit; }
   margin-bottom: 20px;
 }
 
+.app-nav { display: flex; gap: 10px; margin: 0 0 20px; }
+.app-nav a { border-radius: 999px; color: var(--tg-muted); padding: 10px 14px; text-decoration: none; }
+.app-nav a.active { background: var(--tg-button); color: var(--tg-button-text); }
+.feature-page { display: grid; gap: 18px; }
+.feature-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.feature-heading > p { color: var(--tg-muted); margin: 0; max-width: 300px; }
+.form-card, .list-card { display: grid; gap: 13px; border: 1px solid color-mix(in srgb, var(--tg-text) 12%, transparent); border-radius: 18px; background: var(--tg-surface); padding: 20px; }
+.form-card label { display: grid; gap: 6px; font-weight: 650; }
+.form-card input, .form-card select, .form-card textarea { border: 1px solid color-mix(in srgb, var(--tg-text) 22%, transparent); border-radius: 10px; background: transparent; color: inherit; min-height: 42px; padding: 9px 10px; }
+.form-card textarea { min-height: 80px; resize: vertical; }
+.form-card fieldset { border: 0; display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; }
+.form-card fieldset label, .weekday-row label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.form-card input[type="radio"], .form-card input[type="checkbox"] { min-height: auto; }
+.weekday-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.button-primary { background: var(--tg-button); color: var(--tg-button-text); }
+.resource-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.resource-list li, .destination-row { align-items: center; border-bottom: 1px solid color-mix(in srgb, var(--tg-text) 10%, transparent); display: flex; gap: 12px; justify-content: space-between; padding: 12px 0; }
+.resource-list li:last-child, .destination-row:last-child { border-bottom: 0; }
+.resource-list span, .destination-row span { color: var(--tg-muted); display: block; font-size: .9rem; margin-top: 3px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.row-actions button, .destination-row button { background: transparent; border: 1px solid color-mix(in srgb, var(--tg-text) 20%, transparent); border-radius: 8px; color: inherit; min-height: 38px; padding: 0 10px; }
+.row-actions .danger { color: #c44141; }
+.muted { color: var(--tg-muted); }
+.form-error { background: #c4414120; border-radius: 10px; color: #c44141; margin: 0; padding: 12px; }
+.form-message { background: #2f9d6520; border-radius: 10px; color: #1f7a4b; margin: 0; padding: 12px; }
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--tg-muted);
@@ -117,4 +143,6 @@ dd { margin: 4px 0 0; font-weight: 650; overflow-wrap: anywhere; }
 @media (max-width: 480px) {
   .app-header { align-items: flex-start; flex-direction: column; }
   .button { width: 100%; }
+  .feature-heading, .resource-list li, .destination-row { align-items: flex-start; flex-direction: column; }
+  .row-actions, .row-actions button, .destination-row button { width: 100%; }
 }

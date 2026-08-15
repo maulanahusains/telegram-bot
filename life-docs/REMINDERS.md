@@ -4,7 +4,7 @@
 
 **CONFIRMED REQUIREMENT:** support durable one-time and recurring reminders with timezone awareness, enablement, next occurrence, Telegram destinations, failure/retry semantics, restart durability, and safe multiple-process behavior.
 
-**PROPOSAL:** model reminder definitions and occurrence/delivery state separately. PostgreSQL is the source of truth. The executor is replaceable; an in-memory task is never the canonical schedule.
+**IMPLEMENTED IN PHASE 3:** `life_reminders` and `life_reminder_occurrences` separate definitions from delivery/completion state. PostgreSQL is the source of truth. `LifeReminderExecutor` is replaceable; an in-memory task is never canonical schedule state.
 
 ## What exists today
 
@@ -34,7 +34,7 @@ See `DATA_MODEL.md` for `life_reminders` and `life_reminder_occurrences`.
 
 ### Recurrence representation
 
-**PROPOSAL:** support a constrained structured recurrence, not free-form cron and not an arbitrary RRULE string in MVP:
+**ACCEPTED / IMPLEMENTED (DEC-018):** support a constrained structured recurrence, not free-form cron and not an arbitrary RRULE string in MVP:
 
 ```json
 { "frequency": "daily", "interval": 1, "time": "08:00" }
@@ -48,14 +48,14 @@ Persist the validated canonical JSON only if database modeling a separate recurr
 - Store user/reminder timezone as IANA name; validate with `zoneinfo.ZoneInfo`, matching current Finance/Islamic approach.
 - Store `scheduled_for`, `next_run_at`, claims, delivery, and completion in UTC.
 - Compute recurrence in the reminder’s local wall time, then convert to UTC.
-- **PROPOSAL:** for nonexistent DST local time, run at the first valid instant after the gap; for ambiguous repeated local time, run once at the earlier offset. Persist occurrence UTC instant so it cannot run twice. Document this in UI/help.
+- **IMPLEMENTED:** for nonexistent DST local time, run at the first valid minute after the gap; for ambiguous repeated local time, run once at the earlier offset. Persist occurrence UTC instant so it cannot run twice. Document this in UI/help.
 - Changing timezone/recur rule recomputes future `next_run_at`/unclaimed occurrences in a transaction; it must not rewrite past history.
 
 ## Executor algorithm
 
 ### Generation and claiming
 
-At each tick (initially 15–30 seconds; make configurable):
+At each configurable tick (default 30 seconds):
 
 1. In a short transaction, lock a bounded batch of enabled definitions due at or before `now` with `FOR UPDATE SKIP LOCKED`.
 2. For each definition, insert its due occurrence with `ON CONFLICT DO NOTHING` and advance `next_run_at` deterministically to the next local occurrence. Generate at least the due occurrence; do not pre-generate unbounded future rows.
@@ -84,12 +84,12 @@ sequenceDiagram
 ### One-time versus recurring
 
 - **One-time:** one definition/one occurrence. On successful send, disable/complete definition. If late beyond grace it becomes `missed`; no retroactive notification.
-- **Recurring:** advance schedule by recurrence rule based on the last planned local occurrence, not merely “now + interval,” avoiding drift. On downtime, do not emit all old occurrences; mark/skip stale planned instants and create/retain the next future occurrence.
+- **Recurring:** advance schedule by recurrence rule based on the last planned local occurrence, not merely “now + interval,” avoiding drift. If an occurrence is overdue by more than two executor intervals, record the first stale occurrence as `skipped`, suppress the remaining stale history, and advance to the next future local occurrence. This intentionally produces no catch-up delivery burst.
 - Enable/disable updates definition. Disabled pending occurrences should be skipped/cancelled according to explicit service rule, never accidentally delivered from a stale claim.
 
 ## Retry, failure, and missed semantics
 
-**CONFIRMED POLICY / PROPOSAL FOR DEFAULT:** use one configuration-driven late-delivery grace period for all MVP one-time reminder kinds, initially planned at 60 minutes. Do not create reminder-kind-specific policies unless a concrete product requirement later requires them. Classify Telegram failures from existing `TelegramAPIError`/HTTP detail into retryable (timeout/network/429/5xx) and permanent (invalid chat, blocked bot, malformed request). Use bounded attempts with exponential backoff and jitter, respecting Telegram retry-after where safely available.
+**IMPLEMENTED:** use one configuration-driven late-delivery grace period for all MVP one-time reminder kinds: `LIFE_REMINDER_ONE_TIME_GRACE_SECONDS`, default 3600 seconds. Do not create reminder-kind-specific policies unless a concrete product requirement later requires them. `TelegramAPIError` 400/403/404 is permanent; other failures are retryable until `LIFE_REMINDER_MAX_ATTEMPTS` (default 3), with exponential delay or Telegram retry-after.
 
 - A claim lease prevents a crashed worker from permanently holding work. On lease expiry, a new executor can reclaim if attempts remain.
 - A permanent invalid/bot-blocked destination marks that destination disabled with safe reason and marks occurrence failed; it does not delete the person’s reminder.
@@ -119,6 +119,19 @@ No Celery/Redis/APScheduler is required by this path. Introduce a broker only wh
 Destination is a persisted owner-authorized record, not a chat ID supplied at send time. Private chats, groups, and supergroups are MVP destination types. Every destination starts inactive and must be explicitly selected/enabled by its owner; adding the bot to a group or opening Mini App from it never selects it. Activation validates that the chat is known and that the selected Life bot can deliver to it. UI must warn that a group destination exposes notification content to group members.
 
 Inline completion callback data must contain an opaque occurrence/action identifier, not trusted owner data. On webhook callback, resolve normal Telegram `UserContext`, verify occurrence ownership, then make an idempotent transition. This is required because a group notification can be clicked by someone other than its owner.
+
+**IMPLEMENTED IN PHASE 4:** callback data is `life:occurrence:{id}:completed|skipped`; it contains no owner or chat authority. The Life Telegram adapter supplies the webhook actor’s internal global user ID to an owner-filtered service transition. A non-owner receives a short callback response and no mutation. Group notification text is intentionally generic (`Life reminder / Action needed`) rather than exposing a personal title; private delivery shows the title.
+
+## Developer manual verification checklist
+
+Run these only in an authorized developer/runtime environment; this implementation task did not execute them.
+
+1. **Auth:** open `/tg/life` inside Telegram, verify login and `/me`, reload for session reuse, then logout.
+2. **Profile/goals:** create/update a profile, persist IANA timezone, add a later effective goal, and confirm duplicate effective date is rejected.
+3. **Destinations:** interact with the Life bot in private and group chats; confirm only the owner sees candidates, activation requires explicit action, raw arbitrary group selection is unavailable, and one enabled destination can be default.
+4. **Planner:** create one-time, daily, and weekday reminders; edit, disable, and delete them; verify destination validation and stored next occurrence.
+5. **Executor:** with exactly one process setting `LIFE_REMINDER_EXECUTOR_ENABLED=true`, verify due send, success recording, temporary retry, permanent destination disable, one-time inside/outside grace behavior, and recurring downtime does not cause a delivery burst.
+6. **Group safety:** owner presses Done/Skip successfully; another member presses either action and gets no state mutation; Open Life starts the configured Main Mini App route from a group.
 
 ## Operational limits and observability
 

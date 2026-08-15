@@ -21,6 +21,10 @@
 - The Phase 1 session is an opaque HttpOnly cookie backed by `application_sessions`. Do not expose or log raw initData, session tokens, or bot credentials; use the configured launching runtime to verify Mini App data.
 - Phase 1.5 frontend is at root `frontend/`. Its only trusted login flow is session-first `GET /api/v1/me`, then `POST /api/v1/auth/telegram` from `/tg/:launchingBot` with transient `Telegram.WebApp.initData`. Do not store initData or session data in browser storage, and do not add Life screens before their API/domain phase.
 - Keep frontend API calls relative and same-origin. `frontend-dev` uses the Vite proxy only for local development; `frontend` uses Nginx to proxy public backend paths in the production Compose profile. Do not add backend wildcard CORS or a frontend token store.
+- Phase 2 owns `backend/app/modules/life/` and migration `20260816_0005_life_profile_goals_destinations.py`. Notification destinations are activated only from the authenticated owner’s `life_destination_candidates` evidence; never add a raw chat-ID destination endpoint or treat a candidate as an activated destination.
+- Phase 3 added `20260816_0006_life_planner_reminders.py`, constrained daily/weekly recurrence, and `LifeReminderExecutor`. Run the executor in exactly one explicitly configured process; preserve `SKIP LOCKED`, claim-token verification, and the rule that no transaction stays open during Telegram network I/O.
+- Phase 3.5 added `/app/planner` and `/app/settings`. Keep forms narrow and typed; do not move schedule calculation, destination authorization, or user ownership into React state. Do not create placeholder UI for later Nutrition/Grocery/Progress work.
+- Phase 4 makes `LifeBot` the thin Telegram transport. For groups, provision the bot’s Main Mini App in BotFather with the public `/tg/{configured_bot_name}` URL; do not replace it with a raw site link or private-only `web_app` button. Keep group notification text minimal and enforce callback ownership through `UserContext.internal_user_id`.
 
 ## Migrations and verification
 

@@ -59,6 +59,8 @@ Constraints/indexes: unique `(owner_user_id, bot_id, chat_id)`; partial unique d
 
 Relationships: referenced by reminders/routines/workouts. `chat_id` is never ownership. A destination begins inactive; the owner explicitly activates it after backend checks it is known and the selected Life bot can send to it. Failed sends can disable/mark it invalid. Group/supergroup destinations are MVP, with UI warning that notifications are visible to chat members.
 
+**IMPLEMENTED IN PHASE 2:** `life_destination_candidates` is a supporting security table, not a destination. It stores a server-observed `(owner_user_id, bot_id, telegram_chat_id)` relationship only after the Life bot processes an authenticated Telegram interaction. The API activates destinations from a candidate ID, not a browser-supplied chat ID. Candidate rows are user-specific; seeing or activating one never grants ownership of the chat.
+
 ## Planner
 
 ### `life_reminders` — MVP
@@ -73,6 +75,8 @@ Constraints/indexes: title length/nonblank; one-time requires `scheduled_at` and
 
 Relationships: creates occurrence/delivery rows; may be associated to a workout schedule or meal schedule later. Recurrence representation is constrained in [REMINDERS.md](REMINDERS.md), not arbitrary user-supplied cron.
 
+**IMPLEMENTED IN PHASE 3:** these fields are realized with explicit check constraints for title, kind, and schedule type; the destination remains an owner-scoped FK validated by service. `recurrence` is the bounded daily/weekly JSON configuration described in `REMINDERS.md`.
+
 ### `life_reminder_occurrences` — MVP
 
 Purpose: immutable/sufficiently auditable scheduled occurrences and delivery state. This makes retry, missed status, inline actions, and history observable without mutating the definition as the only record.
@@ -84,6 +88,8 @@ Major fields: `id`, `reminder_id`, `scheduled_for`, `status` (`pending`, `claime
 Constraints/indexes: `UNIQUE(reminder_id, scheduled_for)`; index `(status, scheduled_for)` and/or `(status, lease_expires_at)`; bounded attempts.
 
 Relationships: one reminder has many occurrences; completion history feeds Today/Progress. The executor claims these rows rather than treating `next_run_at` alone as delivery state.
+
+**IMPLEMENTED IN PHASE 3:** occurrences include `available_at`, claim token, claimed/lease timestamps, bounded attempts, delivered/completed timestamps, safe failure category, and optional Telegram message ID. The unique reminder/scheduled-instant constraint and due/lease indexes support concurrent executor claims.
 
 ### `life_routine_completions` — MVP only if routine completion needs richer state than occurrences
 

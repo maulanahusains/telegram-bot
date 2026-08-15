@@ -84,7 +84,7 @@ Completion criteria: frontend authenticates only through backend and contains no
 
 Objective: implement the first personal Life vertical slice: profile/settings, effective nutrition goals, and explicitly activated private/group/supergroup notification destinations.
 
-Expected files/modules affected: `backend/app/modules/life/` module skeleton, profile/settings/destination models/repositories/services/schemas/API, standard module registration/composition, Alembic migration; frontend API client/types may receive non-feature bootstrap fields only.
+Implemented files/modules: registered `backend/app/modules/life/` module, Life profile/goal/destination/candidate models, repositories, services, typed schemas, authenticated `/api/v1/life/*` routes, exception types, Alembic metadata import, and migration `20260816_0005_life_profile_goals_destinations.py`.
 
 Migrations: `life_profiles`, `life_nutrition_goals`, `life_notification_destinations` with owner, Life-bot, chat, activation/validation, and index/constraint design from `DATA_MODEL.md`.
 
@@ -96,13 +96,13 @@ Deliverable: typed user API/application services for Settings, goals, and destin
 
 Out of scope: meal/workout/grocery/reminder tables, frontend rich settings screen if not needed for next slice.
 
-Completion criteria: all canonical Life ownership references `telegram_users.id`; group destination is active only by explicit owner action and backend delivery validation.
+Completion criteria: all canonical Life ownership references `telegram_users.id`; group destination is active only by explicit owner action and server-observed candidate evidence. **Implemented; runtime/manual verification remains developer-pending under repository policy.**
 
 ## Phase 3 — Planner and reminder backend
 
 Objective: implement one-time/recurring reminder definitions, occurrence state, durable PostgreSQL claim/executor semantics, and Planner API.
 
-Expected files/modules affected: Life Planner models/repositories/services/schemas/API and executor composition under `backend/app/modules/life/`, configuration, health/logging additions only if warranted, Alembic migration.
+Implemented files/modules: Life reminder/occurrence models, strict recurrence schemas, owner-scoped Planner API, repository claim operations, `LifeReminderExecutor`, executor settings, and migration `20260816_0006_life_planner_reminders.py`.
 
 Migrations: `life_reminders`, `life_reminder_occurrences`, indexes/unique constraints/lease fields. Do not generalize/modify Finance or Islamic schemas.
 
@@ -114,13 +114,13 @@ Deliverable: durable Planner user API/application services. Executor is safe to 
 
 Out of scope: broker/Celery/Redis, complex recurrence, nutrition/fitness/grocery features.
 
-Completion criteria: occurrence claims are transactionally safe, executor sends outside locks, and no in-memory timer is canonical state.
+Completion criteria: occurrence claims are transactionally safe, executor sends outside locks, and no in-memory timer is canonical state. **Implemented; developer runtime/migration verification remains pending.**
 
 ## Phase 3.5 — Planner frontend
 
 Objective: make Planner a real vertical slice with structured reminder CRUD and destination selection.
 
-Expected files/modules affected: `frontend/src/features/planner/`, settings/destination UI as needed, typed API hooks/forms/routes.
+Implemented files/modules: typed `frontend/src/app/api/life.ts`, Planner/Settings module pages, authenticated nested `/app/planner` and `/app/settings` routes, shared Life shell navigation, and mobile-responsive form/list styling.
 
 Migrations: none.
 
@@ -132,13 +132,13 @@ Deliverable: authenticated user creates/enables/disables/reschedules reminders t
 
 Out of scope: Telegram command CRUD, NLP scheduling, rich Today/Nutrition screens.
 
-Completion criteria: all forms emit structured API payloads; frontend does not calculate canonical recurrence/ownership rules.
+Completion criteria: all forms emit structured API payloads; frontend does not calculate canonical recurrence/ownership rules. **Implemented, pending developer build/manual API verification.**
 
 ## Phase 4 — Telegram Life entry and reminder notification UX
 
 Objective: add minimal Life runtime bot: `/start`, `/app`, optional simple `/today`, reminder delivery, and ownership-safe inline actions.
 
-Expected files/modules affected: Life bot/router/formatting/callback adapter/factory under `backend/app/modules/life/`; bot provisioning documentation; no generic platform refactor unless required by evidence.
+Implemented files/modules: `LifeBot` command/callback adapter, context-aware Mini App button helpers, executor delivery renderer, candidate observation, owner-only Done/Skip transitions, backend configuration documentation, and Telegram provisioning/manual verification instructions.
 
 Migrations: none unless an occurrence action audit field is genuinely required.
 
@@ -150,7 +150,7 @@ Deliverable: Telegram is a notification/entry transport, never the principal fea
 
 Out of scope: complex command parser, natural-language input, group ownership semantics.
 
-Completion criteria: a group callback cannot change another person’s data; personal action authorization always derives from Telegram actor/API session.
+Completion criteria: a group callback cannot change another person’s data; personal action authorization always derives from Telegram actor/API session. **Implemented structurally; Telegram/BotFather/executor runtime verification remains developer-pending.**
 
 ## Phase 5 — Nutrition, weight, and Fitness backend
 

@@ -100,6 +100,12 @@ sequenceDiagram
 
 Opening from different chats changes launch context, not `owner_user_id`. The backend may record/validate an optional launch chat only to preselect a notification destination after authorization. When opened outside Telegram, show an unauthenticated “Open in Telegram” page; independent login is deferred.
 
+**IMPLEMENTED IN PHASE 2:** `backend/app/modules/life/` is registered through the existing module discovery/factory mechanism. Its initial bot runtime records only a `life_destination_candidates` row after an authenticated Telegram interaction. The REST API turns that evidence into an explicitly enabled destination; it does not invoke a Telegram router or trust a client chat identifier.
+
+**IMPLEMENTED IN PHASE 3:** the same module owns Planner reminder services, PostgreSQL models/repositories, and a `LifeReminderExecutor` started by the Life bot only when the explicit executor setting is enabled. Claim transactions and token-checked completion are separate from Telegram network sends, keeping the executor extractable to a later worker process.
+
+**IMPLEMENTED IN PHASE 4:** `LifeBot` is the only Telegram adapter. It records candidate evidence, provides `/start` and `/app`, renders delivery notifications, and delegates all state changes to `LifeService`. Private app buttons use Telegram `web_app`; group/supergroup buttons use the configured bot’s Main Mini App direct link. Inline actions resolve the webhook actor through `UserContext` and call an owner-filtered occurrence transition, so another group member cannot mutate the owner’s personal state.
+
 ## Reminder executor architecture
 
 See [REMINDERS.md](REMINDERS.md) for detail. The target is PostgreSQL source-of-truth schedules plus due occurrence/delivery claims. An executor polls due rows, claims with transactional locking, sends through the injected Life bot Telegram client, and records success/failure/retry. No in-memory timer is canonical.

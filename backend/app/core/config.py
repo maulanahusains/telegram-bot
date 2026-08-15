@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     application_session_cookie_secure: bool = True
     application_session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
+    life_reminder_executor_enabled: bool = False
+    life_reminder_executor_interval_seconds: int = Field(default=30, ge=5, le=300)
+    life_reminder_executor_batch_size: int = Field(default=50, ge=1, le=200)
+    life_reminder_claim_lease_seconds: int = Field(default=120, ge=30, le=900)
+    life_reminder_max_attempts: int = Field(default=3, ge=1, le=10)
+    life_reminder_retry_base_seconds: int = Field(default=60, ge=5, le=3600)
+    life_reminder_one_time_grace_seconds: int = Field(default=3600, ge=60, le=86_400)
+
     @model_validator(mode="after")
     def validate_session_cookie(self) -> Settings:
         if (

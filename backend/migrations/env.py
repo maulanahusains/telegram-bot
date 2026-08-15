@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.core.database import Base
 from app.platform.auth import models as auth_models
+from app.modules.life import models as life_models
 from app.modules.sample_bot import models as sample_models
 from app.modules.finance import models as finance_models
 from app.modules.islamic import models as islamic_models
@@ -19,6 +20,7 @@ from app.platform.users import models as user_models
 
 _MODELS = (
     auth_models,
+    life_models,
     finance_models,
     islamic_models,
     sample_models,
