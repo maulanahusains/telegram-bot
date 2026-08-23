@@ -56,12 +56,29 @@ class LifeBot(BaseBot):
     async def _deliver_reminder(self, claim: ReminderDeliveryClaim) -> SentMessage:
         if claim.chat_type in {"group", "supergroup"}:
             text = "Life reminder\nAction needed."
+        elif claim.kind == "grocery":
+            text = f"{claim.title}\n\n{claim.notes or 'Please check your grocery list in Life.'}"
+        elif claim.kind == "goal_recommendation":
+            text = f"{claim.title}\n\n{claim.notes or 'Review your calorie recommendation in Life.'}"
         else:
-            text = f"{claim.title}\n\nReminder due."
-        return await self.dependencies.telegram.send_message(
-            chat_id=claim.telegram_chat_id,
-            text=text,
-            reply_markup={
+            text = f"{claim.title}\n\n{claim.notes or 'Reminder due.'}"
+        if claim.kind == "grocery":
+            reply_markup = {"inline_keyboard": [[self._open_app_button(claim.chat_type)]]}
+        elif claim.kind == "goal_recommendation" and claim.goal_recommendation_id is not None and claim.chat_type == "private":
+            recommendation_id = claim.goal_recommendation_id
+            apply_label = f"Apply {claim.goal_recommendation_recommended_kcal:,} kcal" if claim.goal_recommendation_recommended_kcal is not None else "Apply"
+            keep_label = f"Tetap {claim.goal_recommendation_current_kcal:,} kcal" if claim.goal_recommendation_current_kcal is not None else "Tetap"
+            reply_markup = {
+                "inline_keyboard": [
+                    [
+                        {"text": apply_label, "callback_data": f"life:goal-rec:{recommendation_id}:apply"},
+                        {"text": keep_label, "callback_data": f"life:goal-rec:{recommendation_id}:dismiss"},
+                    ],
+                    [{**self._open_app_button("private"), "text": "Lihat detail"}],
+                ]
+            }
+        else:
+            reply_markup = {
                 "inline_keyboard": [
                     [
                         {"text": "Done", "callback_data": f"life:occurrence:{claim.occurrence_id}:completed"},
@@ -69,7 +86,11 @@ class LifeBot(BaseBot):
                     ],
                     [self._open_app_button(claim.chat_type)],
                 ]
-            },
+            }
+        return await self.dependencies.telegram.send_message(
+            chat_id=claim.telegram_chat_id,
+            text=text,
+            reply_markup=reply_markup,
         )
 
     async def _handle_callback(self, update: TelegramUpdate, context: UserContext) -> None:
@@ -77,6 +98,32 @@ class LifeBot(BaseBot):
         assert callback is not None
         data = callback.data or ""
         parts = data.split(":")
+        if len(parts) == 4 and parts[0] == "life" and parts[1] == "goal-rec" and parts[3] in {"apply", "dismiss"}:
+            if context.chat_type != "private":
+                await self.dependencies.telegram.answer_callback_query(
+                    callback_query_id=callback.id,
+                    text="Rekomendasi hanya dapat diproses di chat pribadi.",
+                )
+                return
+            try:
+                recommendation_id = int(parts[2])
+                result = await self.service.transition_goal_recommendation(context.internal_user_id, recommendation_id, parts[3])
+            except (ValueError, LifeNotFoundError, LifeValidationError):
+                await self.dependencies.telegram.answer_callback_query(
+                    callback_query_id=callback.id,
+                    text="Hanya pemilik rekomendasi yang dapat memilih.",
+                )
+                return
+            await self.dependencies.telegram.answer_callback_query(
+                callback_query_id=callback.id,
+                text=result.message,
+            )
+            if callback.message is not None:
+                await self.dependencies.telegram.edit_message_reply_markup(
+                    chat_id=callback.message.chat.id,
+                    message_id=callback.message.message_id,
+                )
+            return
         if len(parts) != 4 or parts[0] != "life" or parts[1] != "occurrence" or parts[3] not in {"completed", "skipped"}:
             return
         try:

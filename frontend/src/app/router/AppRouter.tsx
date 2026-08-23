@@ -5,6 +5,9 @@ import { AppState } from "../../shared/components/AppState";
 import { LifeShell } from "../../modules/life/LifeShell";
 import { PlannerPage } from "../../modules/life/PlannerPage";
 import { SettingsPage } from "../../modules/life/SettingsPage";
+import { TodayPage } from "../../modules/life/TodayPage";
+import { GroceryPage } from "../../modules/life/GroceryPage";
+import { ProgressPage } from "../../modules/life/ProgressPage";
 
 export function LaunchRoute() {
   const { launchingBot } = useParams<{ launchingBot: string }>();
@@ -26,7 +29,7 @@ function BootstrapPage({ launchingBot, returnPath, launchOnly = false }: { launc
     case "loading":
       return <AppState title="Connecting to Telegram">Checking your secure application session…</AppState>;
     case "authenticated":
-      return launchOnly ? <Navigate to="/app/planner" replace /> : <LifeShell user={state.user} returnPath={returnPath} />;
+      return launchOnly ? <Navigate to="/app/today" replace /> : <LifeShell user={state.user} returnPath={returnPath} />;
     case "outside_telegram":
       return <AppState title="Open this app from Telegram">Sign-in for this MVP uses Telegram Mini App verification. Open the application from a configured Telegram bot to continue.</AppState>;
     case "missing_launch_context":
@@ -40,4 +43,4 @@ function BootstrapPage({ launchingBot, returnPath, launchOnly = false }: { launc
   }
 }
 
-export { PlannerPage, SettingsPage };
+export { GroceryPage, PlannerPage, ProgressPage, SettingsPage, TodayPage };

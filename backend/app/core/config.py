@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from functools import lru_cache
 from typing import Literal
 
@@ -57,7 +58,10 @@ class Settings(BaseSettings):
         default="telegram_platform_session", min_length=1, max_length=128
     )
     application_session_cookie_secure: bool = True
-    application_session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    # Telegram Web can host a Mini App in an embedded cross-site context.  A
+    # Secure SameSite=None cookie is therefore required for the opaque session
+    # to accompany the follow-up /api/v1/me request after initData login.
+    application_session_cookie_samesite: Literal["lax", "strict", "none"] = "none"
 
     life_reminder_executor_enabled: bool = False
     life_reminder_executor_interval_seconds: int = Field(default=30, ge=5, le=300)
@@ -66,6 +70,16 @@ class Settings(BaseSettings):
     life_reminder_max_attempts: int = Field(default=3, ge=1, le=10)
     life_reminder_retry_base_seconds: int = Field(default=60, ge=5, le=3600)
     life_reminder_one_time_grace_seconds: int = Field(default=3600, ge=60, le=86_400)
+
+    life_goal_recommendations_enabled: bool = False
+    life_goal_recommendation_cadence_days: int = Field(default=1, ge=1, le=7)
+    life_goal_recommendation_window_days: int = Field(default=21, ge=7, le=90)
+    life_goal_recommendation_min_observations: int = Field(default=14, ge=2, le=90)
+    life_goal_recommendation_max_gap_days: int = Field(default=4, ge=1, le=30)
+    life_goal_recommendation_cooldown_days: int = Field(default=14, ge=0, le=365)
+    life_goal_recommendation_expiry_days: int = Field(default=7, ge=1, le=30)
+    life_goal_recommendation_delta_kcal: int = Field(default=100, ge=1, le=1000)
+    life_goal_recommendation_tolerance_kg_per_week: Decimal = Field(default=Decimal("0.10"), ge=0, le=5, max_digits=5, decimal_places=2)
 
     @model_validator(mode="after")
     def validate_session_cookie(self) -> Settings:

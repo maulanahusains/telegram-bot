@@ -67,7 +67,11 @@ export function useAuthBootstrap(launchingBotName?: string): AuthBootstrapState 
     telegram.isTelegram
   ]);
 
-  if (currentUser.isPending || login.isPending) {
+  if (
+    currentUser.isPending ||
+    login.isPending ||
+    (login.isSuccess && currentUser.isFetching)
+  ) {
     return { kind: "loading" };
   }
   if (currentUser.data) {
@@ -90,6 +94,13 @@ export function useAuthBootstrap(launchingBotName?: string): AuthBootstrapState 
   }
   if (login.error) {
     return { kind: "authentication_failed", message: publicErrorMessage(login.error) };
+  }
+  if (login.isSuccess) {
+    return {
+      kind: "authentication_failed",
+      message:
+        "Telegram sign-in succeeded, but this browser did not retain the secure session. Reopen the Mini App and try again."
+    };
   }
   return { kind: "loading" };
 }

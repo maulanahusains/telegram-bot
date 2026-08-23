@@ -31,7 +31,10 @@ export async function apiRequest<T>(
   const response = await fetch(`/api/v1${path}`, {
     ...options,
     headers,
-    credentials: "same-origin"
+    // The deployed API is same-origin, but Telegram Web may embed that origin
+    // in its own WebView/iframe. `include` ensures the Secure Mini App session
+    // cookie participates in the login follow-up request.
+    credentials: "include"
   });
   const payload: unknown = await readJson(response);
 

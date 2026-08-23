@@ -29,7 +29,7 @@ services:
       [
         "sh",
         "-c",
-        "/app/.venv/bin/python -m alembic upgrade head && exec /app/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+        "/app/.venv/bin/python -m alembic upgrade head && exec /app/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
       ]
 
     ports:
@@ -90,13 +90,24 @@ services:
     restart: unless-stopped
 
   cloudflared:
-    profiles: ["dev","prod"]
+    profiles: ["dev"]
     image: cloudflare/cloudflared:latest
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     command: ["tunnel", "--no-autoupdate", "run"]
     depends_on:
       app-dev:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cloudflared-prod:
+    profiles: ["prod"]
+    image: cloudflare/cloudflared:latest
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    depends_on:
+      app:
         condition: service_healthy
     restart: unless-stopped
 
