@@ -52,6 +52,7 @@ class GitlabPipelineValue(BaseModel):
     id: int
     status: str | None = None
     ref: str | None = None
+    sha: str | None = None
     web_url: str | None = None
 
 

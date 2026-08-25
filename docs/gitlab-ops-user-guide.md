@@ -223,9 +223,20 @@ manual tetap tersedia untuk recovery. Pada auto-action sukses, tombol approval
 yang sudah tidak relevan disembunyikan. Lifecycle notifikasi pipeline/job tetap
 berjalan seperti biasa.
 
-Push dari identity GitLab pemilik konfigurasi tetap mengirim notifikasi. Untuk
-branch non-protected, tombol `Run` disembunyikan agar tidak memicu run manual
-tambahan; branch protected tetap mempertahankan tombol dan konfirmasi kedua.
+Push dari identity GitLab pemilik konfigurasi ke branch non-protected yang
+mempunyai mapping aktif akan otomatis membuat **satu** API pipeline untuk commit
+push tersebut, lalu memainkan semua job mapping yang cocok. Notifikasi push
+menyatakan automation telah dimulai dan tidak menampilkan tombol `Run`.
+
+Bot memverifikasi HEAD branch sebelum membuat pipeline; bila SHA sudah berubah,
+pipeline tidak memainkan job yang stale. Delivery webhook duplikat tidak membuat
+pipeline atau job tambahan. Jika GitLab gagal membuat pipeline, menemukan job,
+atau memainkan job, notifikasi push menampilkan kegagalan singkat dan
+menyediakan tombol manual untuk recovery.
+
+Push dari user GitLab lain tetap mengikuti flow manual biasa. Untuk branch
+protected, bahkan push dari konfigurator tidak auto-run; tombol `Run` dan
+confirmation kedua tetap dipertahankan.
 
 ## 8. Beri izin manual script
 

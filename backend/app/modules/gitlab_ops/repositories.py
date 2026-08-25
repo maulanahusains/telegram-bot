@@ -11,6 +11,8 @@ from app.modules.gitlab_ops.models import (
     GitlabAuditEventModel,
     GitlabAutomationAllowlistModel,
     GitlabAutomationExecutionModel,
+    GitlabAutomationPushExecutionModel,
+    GitlabAutomationPushRunModel,
     GitlabCallbackActionModel,
     GitlabInstanceModel,
     GitlabNotificationMessageModel,
@@ -88,6 +90,41 @@ class GitlabOpsRepository:
 
     async def automation_execution(self, session: AsyncSession, *, project_id: int, execution_key: str) -> GitlabAutomationExecutionModel | None:
         return await session.scalar(select(GitlabAutomationExecutionModel).where(GitlabAutomationExecutionModel.project_id == project_id, GitlabAutomationExecutionModel.execution_key == execution_key))
+
+    async def claim_automation_push_run(self, session: AsyncSession, *, project_id: int, ref: str, commit_sha: str) -> GitlabAutomationPushRunModel | None:
+        existing = await session.scalar(select(GitlabAutomationPushRunModel).where(GitlabAutomationPushRunModel.project_id == project_id, GitlabAutomationPushRunModel.ref == ref, GitlabAutomationPushRunModel.commit_sha == commit_sha))
+        if existing is not None:
+            return None
+        model = GitlabAutomationPushRunModel(project_id=project_id, ref=ref, commit_sha=commit_sha)
+        try:
+            async with session.begin_nested():
+                session.add(model)
+                await session.flush()
+        except IntegrityError:
+            return None
+        return model
+
+    async def automation_push_run(self, session: AsyncSession, *, project_id: int, ref: str, commit_sha: str) -> GitlabAutomationPushRunModel | None:
+        return await session.scalar(select(GitlabAutomationPushRunModel).where(GitlabAutomationPushRunModel.project_id == project_id, GitlabAutomationPushRunModel.ref == ref, GitlabAutomationPushRunModel.commit_sha == commit_sha))
+
+    async def add_automation_push_execution(self, session: AsyncSession, *, run_id: int, project_id: int, mapping_id: int, pipeline_id: int) -> GitlabAutomationPushExecutionModel:
+        model = GitlabAutomationPushExecutionModel(run_id=run_id, project_id=project_id, mapping_id=mapping_id, pipeline_id=pipeline_id)
+        session.add(model)
+        await session.flush()
+        return model
+
+    async def automation_push_execution_by_external(self, session: AsyncSession, *, project_id: int, pipeline_id: int | None, job_id: int | None) -> GitlabAutomationPushExecutionModel | None:
+        if pipeline_id is None and job_id is None:
+            return None
+        predicates = [GitlabAutomationPushExecutionModel.project_id == project_id]
+        if job_id is not None:
+            predicates.append(GitlabAutomationPushExecutionModel.job_id == job_id)
+        elif pipeline_id is not None:
+            predicates.append(GitlabAutomationPushExecutionModel.pipeline_id == pipeline_id)
+        return await session.scalar(select(GitlabAutomationPushExecutionModel).where(*predicates).order_by(GitlabAutomationPushExecutionModel.id.desc()))
+
+    async def automation_push_executions(self, session: AsyncSession, *, run_id: int) -> list[GitlabAutomationPushExecutionModel]:
+        return list((await session.scalars(select(GitlabAutomationPushExecutionModel).where(GitlabAutomationPushExecutionModel.run_id == run_id))).all())
     async def get_instance(self, session: AsyncSession, base_url: str) -> GitlabInstanceModel | None:
         return await session.scalar(select(GitlabInstanceModel).where(GitlabInstanceModel.base_url == base_url))
 

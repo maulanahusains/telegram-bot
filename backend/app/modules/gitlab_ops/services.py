@@ -21,6 +21,8 @@ from app.core.telegram_client import SentMessage, TelegramBotClient
 from app.modules.gitlab_ops.formatting import action_markup, branch_matches, deployment_text, mr_text, pipeline_text, push_text
 from app.modules.gitlab_ops.gitlab_client import GitlabApiClient, normalize_gitlab_url
 from app.modules.gitlab_ops.models import (
+    GitlabAutomationPushExecutionModel,
+    GitlabAutomationPushRunModel,
     GitlabCallbackActionModel,
     GitlabInstanceModel,
     GitlabManualScriptMappingModel,
@@ -1138,7 +1140,7 @@ class GitlabOpsService:
                 await self._process_job_event(telegram, project, payload)
                 return
             automation = await self._run_merge_request_automation(project, payload) if category == "merge_request" else None
-            suppress_push_runs = await self._should_suppress_push_runs(project, payload, branch) if category == "push" else False
+            push_automation = await self._run_push_automation(project, payload, branch) if category == "push" else None
             subscriptions = await self.repository.subscriptions(session, project_id=project.id, category=category)
             chats = {subscription.telegram_chat_id: await session.get(TelegramChatModel, subscription.telegram_chat_id) for subscription in subscriptions}
         if not subscriptions:
@@ -1180,7 +1182,7 @@ class GitlabOpsService:
                             if attrs.get("target_branch") in {"main", "master", "production"}:
                                 label = f"⚠️ Approve & Run {mapping.telegram_label}"
                             actions.append((label, action_key))
-                if category == "push" and not suppress_push_runs:
+                if category == "push" and push_automation != "success":
                     push_sha = str(payload.get("after") or payload.get("checkout_sha") or "")
                     for mapping in await self.repository.manual_mappings(session, project_id=project.id, target_branch=branch):
                         script_permission = await session.scalar(select(GitlabManualScriptPermissionModel).where(GitlabManualScriptPermissionModel.mapping_id == mapping.id, GitlabManualScriptPermissionModel.active.is_(True)).order_by(GitlabManualScriptPermissionModel.bot_user_id))
@@ -1191,6 +1193,10 @@ class GitlabOpsService:
                     text += "\n\n<b>Automation:</b> service account sudah approve dan menjalankan mapping yang cocok."
                 elif automation == "failed":
                     text += "\n\n<b>Automation gagal:</b> aksi manual tetap tersedia untuk recovery."
+                if push_automation == "success":
+                    text += "\n\n<b>Automation:</b> service account membuat API pipeline dan menjalankan manual job yang cocok."
+                elif push_automation == "failed":
+                    text += "\n\n<b>Automation gagal:</b> tombol manual tetap tersedia untuk recovery."
                 markup = action_markup(actions)
             sent: SentMessage
             if was_running and message is not None:
@@ -1220,6 +1226,20 @@ class GitlabOpsService:
             return
         async with self.database.transaction() as session:
             run = await self.repository.manual_run_by_external(session, project_id=project.id, job_id=job_id, pipeline_id=pipeline_id)
+            push_execution = await self.repository.automation_push_execution_by_external(session, project_id=project.id, job_id=job_id, pipeline_id=pipeline_id)
+            if push_execution is not None:
+                push_execution.status = status
+                push_execution.job_id = job_id or push_execution.job_id
+                push_execution.pipeline_id = pipeline_id or push_execution.pipeline_id
+                push_execution.error_summary = _job_failure_reason(attrs) if status in {"failed", "canceled"} else None
+                push_run = await session.get(GitlabAutomationPushRunModel, push_execution.run_id, with_for_update=True)
+                if push_run is not None and status in {"failed", "canceled"}:
+                    push_run.status = "failed"
+                    push_run.error_summary = push_execution.error_summary or "Manual job automation gagal."
+                elif push_run is not None and status in {"success", "skipped"}:
+                    executions = await self.repository.automation_push_executions(session, run_id=push_run.id)
+                    if executions and all(item.status in {"success", "skipped"} for item in executions):
+                        push_run.status = "success"
             if run is None:
                 return
             mapping = await self.repository.manual_mapping(session, run.mapping_id)
@@ -1286,20 +1306,79 @@ class GitlabOpsService:
             and await self.repository.manual_permission(session, mapping_id=mapping_id, bot_user_id=credential.configured_by_bot_user_id) is not None
         )
 
-    async def _should_suppress_push_runs(self, project: GitlabProjectModel, payload: dict[str, Any], branch: str | None) -> bool:
+    async def _run_push_automation(self, project: GitlabProjectModel, payload: dict[str, Any], branch: str | None) -> str | None:
         pusher_id = _int_value(payload.get("user_id"))
-        if pusher_id is None or not branch:
-            return False
+        commit_sha = str(payload.get("after") or payload.get("checkout_sha") or "")
+        if pusher_id is None or not branch or not commit_sha or set(commit_sha) == {"0"}:
+            return None
         async with self.database.session() as session:
             credential = await self.repository.service_credential(session, project_id=project.id)
             instance = await session.get(GitlabInstanceModel, project.instance_id)
         if credential is None or instance is None or credential.configured_by_external_user_id != pusher_id:
-            return False
+            return None
+        client = self._service_client(instance, credential)
         try:
-            return not (await self._service_client(instance, credential).branch(project.external_project_id, branch)).protected
+            current_branch = await client.branch(project.external_project_id, branch)
+            if current_branch.protected:
+                return None
+            if str(current_branch.commit.get("id") or "") != commit_sha:
+                return "failed"
+            async with self.database.session() as session:
+                mappings = await self.repository.manual_mappings(session, project_id=project.id, target_branch=branch)
+            if not mappings:
+                return None
+            async with self.database.transaction() as session:
+                run = await self.repository.claim_automation_push_run(session, project_id=project.id, ref=branch, commit_sha=commit_sha)
+            if run is None:
+                async with self.database.session() as session:
+                    existing = await self.repository.automation_push_run(session, project_id=project.id, ref=branch, commit_sha=commit_sha)
+                return "success" if existing is not None and existing.status in {"running", "success"} else "failed"
+            try:
+                pipeline = await client.create_pipeline(project.external_project_id, ref=branch)
+                if pipeline.sha != commit_sha:
+                    raise GitlabApiError(409, "Pipeline GitLab tidak memakai SHA push yang diharapkan")
+                async with self.database.transaction() as session:
+                    current = await session.get(GitlabAutomationPushRunModel, run.id, with_for_update=True)
+                    if current:
+                        current.pipeline_id = pipeline.id
+                jobs = await client.pipeline_jobs(project.external_project_id, pipeline.id)
+                failed = False
+                for mapping in mappings:
+                    async with self.database.transaction() as session:
+                        execution = await self.repository.add_automation_push_execution(session, run_id=run.id, project_id=project.id, mapping_id=mapping.id, pipeline_id=pipeline.id)
+                    try:
+                        job = next((item for item in jobs if str(item.get("name")) == mapping.job_name), None)
+                        if job is None:
+                            raise GitlabApiError(422, "Manual job mapping tidak ditemukan pada pipeline")
+                        played = await client.play_job(project.external_project_id, int(job["id"]))
+                        async with self.database.transaction() as session:
+                            current = await session.get(GitlabAutomationPushExecutionModel, execution.id, with_for_update=True)
+                            if current:
+                                current.status = "running"
+                                current.job_id = _int_value(played.get("id")) or _int_value(job.get("id"))
+                    except GitlabApiError as error:
+                        failed = True
+                        async with self.database.transaction() as session:
+                            current = await session.get(GitlabAutomationPushExecutionModel, execution.id, with_for_update=True)
+                            if current:
+                                current.status = "failed"
+                                current.error_summary = f"HTTP {error.status_code}"
+                async with self.database.transaction() as session:
+                    current = await session.get(GitlabAutomationPushRunModel, run.id, with_for_update=True)
+                    if current:
+                        current.status = "failed" if failed else "running"
+                        current.error_summary = "Satu atau lebih manual job GitLab gagal diproses." if failed else None
+                return "failed" if failed else "success"
+            except GitlabApiError as error:
+                async with self.database.transaction() as session:
+                    current = await session.get(GitlabAutomationPushRunModel, run.id, with_for_update=True)
+                    if current:
+                        current.status = "failed"
+                        current.error_summary = f"HTTP {error.status_code}"
+                return "failed"
         except GitlabApiError:
             # Preserve the manual recovery path when GitLab branch state cannot be verified.
-            return False
+            return "failed"
 
     async def _run_merge_request_automation(self, project: GitlabProjectModel, payload: dict[str, Any]) -> str | None:
         """Return success, failed, protected, or None. Claims durable records before GitLab writes."""

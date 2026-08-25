@@ -212,6 +212,39 @@ class GitlabAutomationExecutionModel(TimestampMixin, Base):
     error_summary: Mapped[str | None] = mapped_column(Text)
 
 
+class GitlabAutomationPushRunModel(TimestampMixin, Base):
+    __tablename__ = "gitlab_automation_push_runs"
+    __table_args__ = (
+        UniqueConstraint("project_id", "ref", "commit_sha", name="uq_gitlab_automation_push_run"),
+        Index("ix_gitlab_automation_push_run_status", "project_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("gitlab_projects.id", ondelete="CASCADE"), nullable=False)
+    ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    commit_sha: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="requested", nullable=False)
+    pipeline_id: Mapped[int | None] = mapped_column(BigInteger)
+    error_summary: Mapped[str | None] = mapped_column(Text)
+
+
+class GitlabAutomationPushExecutionModel(TimestampMixin, Base):
+    __tablename__ = "gitlab_automation_push_executions"
+    __table_args__ = (
+        UniqueConstraint("run_id", "mapping_id", name="uq_gitlab_automation_push_execution_mapping"),
+        Index("ix_gitlab_automation_push_execution_external", "project_id", "pipeline_id", "job_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("gitlab_automation_push_runs.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("gitlab_projects.id", ondelete="CASCADE"), nullable=False)
+    mapping_id: Mapped[int] = mapped_column(ForeignKey("gitlab_manual_script_mappings.id", ondelete="RESTRICT"), nullable=False)
+    pipeline_id: Mapped[int | None] = mapped_column(BigInteger)
+    job_id: Mapped[int | None] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(32), default="requested", nullable=False)
+    error_summary: Mapped[str | None] = mapped_column(Text)
+
+
 class GitlabWebhookInboxModel(TimestampMixin, Base):
     __tablename__ = "gitlab_webhook_inbox"
     __table_args__ = (
