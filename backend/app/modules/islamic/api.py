@@ -12,7 +12,7 @@ from app.modules.islamic.schemas import AyahValue, IslamicInputError, PrayerTime
 
 ALADHAN_BASE_URL = "https://api.aladhan.com/v1"
 QURAN_BASE_URL = "https://api.alquran.cloud/v1"
-QURAN_IMAGE_URL = "https://cdn.alquran.cloud/media/image/{surah}/{ayah}"
+QURAN_IMAGE_URL = "https://cdn.islamic.network/quran/images/{surah}_{ayah}.png"
 PRAYER_NAMES = {
     "Fajr": "Subuh",
     "Dhuhr": "Zuhur",
