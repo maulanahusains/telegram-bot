@@ -17,6 +17,7 @@ from app.modules.gitlab_ops.services import (
     SELECTOR_SCRIPT_GRANT,
     SELECTOR_SCRIPTS,
     SELECTOR_SUBSCRIBE,
+    SELECTOR_AUTOMATION,
 )
 from app.platform.users.services import UserStateService
 from app.shared.types import TelegramUpdate, UserContext
@@ -76,6 +77,9 @@ class GitlabOpsRouter:
             if args.lower().startswith("script grant "):
                 await self._grant_script(context, args[13:].strip())
                 return
+            if args.lower().startswith("automation"):
+                await self._automation(context, args[10:].strip())
+                return
             if args.lower().startswith("project "):
                 await self._select_project(context, args[8:].strip())
                 return
@@ -91,7 +95,7 @@ class GitlabOpsRouter:
             if args.lower().startswith("subscribe "):
                 await self._save_subscription(context, args[10:])
                 return
-            await self._send(context.chat_id, "Gunakan /gitlab projects, /gitlab branches, /gitlab scripts, /gitlab rule, /gitlab subscribe, /gitlab script grant, atau /gitlab status.")
+            await self._send(context.chat_id, "Gunakan /gitlab projects, /gitlab branches, /gitlab scripts, /gitlab automation, /gitlab rule, /gitlab subscribe, /gitlab script grant, atau /gitlab status.")
             return
         if command == "/projects":
             await self._send(context.chat_id, await self._service.list_projects_text(context))
@@ -132,7 +136,7 @@ class GitlabOpsRouter:
                 await self._handle_state(text, context, state.state, dict(state.data), state.version)
 
     async def _handle_state(self, text: str, context: UserContext, state: str, data: dict[str, Any], version: int) -> None:
-        if state in {"gitlab_rule_input", "gitlab_subscribe_input", "gitlab_grant_user"} and data.get("chat_id") != context.chat_id:
+        if state in {"gitlab_rule_input", "gitlab_subscribe_input", "gitlab_grant_user", "gitlab_automation_pat", "gitlab_automation_author"} and data.get("chat_id") != context.chat_id:
             await self._state.clear_state(context.bot_user_id)
             await self._send(context.chat_id, "Sesi GitLab ini terikat ke chat lain. Mulai ulang command selector.")
             return
@@ -152,6 +156,28 @@ class GitlabOpsRouter:
                 return
             await self._state.clear_state(context.bot_user_id)
             await self._send(context.chat_id, reply + "\nGunakan /gitlab projects untuk memilih project.")
+        elif state == "gitlab_automation_pat":
+            try:
+                result = await self._service.configure_automation(context, int(data["project_id"]), text)
+            except Exception as error:
+                await self._send(context.chat_id, f"Setup automation gagal: {escape(str(error))[:400]}")
+                return
+            await self._state.clear_state(context.bot_user_id)
+            await self._send(context.chat_id, result)
+            menu = await self._service.automation_menu_reply(context, int(data["project_id"]))
+            if isinstance(menu, CallbackReply):
+                await self._send_reply(context.chat_id, menu)
+        elif state == "gitlab_automation_author":
+            try:
+                result = await self._service.add_automation_author(context, int(data["project_id"]), text)
+            except Exception as error:
+                await self._send(context.chat_id, f"Tambah allowlist gagal: {escape(str(error))[:400]}")
+                return
+            await self._state.clear_state(context.bot_user_id)
+            await self._send(context.chat_id, result)
+            menu = await self._service.automation_menu_reply(context, int(data["project_id"]))
+            if isinstance(menu, CallbackReply):
+                await self._send_reply(context.chat_id, menu)
         elif state == "gitlab_select_project":
             try:
                 index = int(text) - 1
@@ -288,6 +314,32 @@ class GitlabOpsRouter:
         except Exception as error:
             result = f"Grant script gagal: {escape(str(error))[:400]}"
         await self._send(context.chat_id, result)
+
+    async def _automation(self, context: UserContext, value: str) -> None:
+        parts = value.split()
+        if not parts:
+            await self._show_selector(context, SELECTOR_AUTOMATION)
+            return
+        try:
+            if parts[0].lower() == "status" and len(parts) == 2:
+                await self._send(context.chat_id, await self._service.automation_status(context, int(parts[1])))
+                return
+            if parts[0].lower() == "allow" and len(parts) == 3:
+                await self._send(context.chat_id, await self._service.add_automation_author(context, int(parts[1]), parts[2]))
+                return
+            if parts[0].lower() == "remove" and len(parts) == 3:
+                await self._send(context.chat_id, await self._service.remove_automation_author(context, int(parts[1]), int(parts[2])))
+                return
+            if len(parts) == 1:
+                project_id = int(parts[0])
+                state = await self._state.get_state(context.bot_user_id)
+                await self._state.set_state(context.bot_user_id, state="gitlab_automation_pat", data={"project_id": project_id, "chat_id": context.chat_id}, expected_version=state.version)
+                await self._send(context.chat_id, "Kirim PAT service account GitLab sekarang. Token harus memiliki scope api dan akses project untuk membaca MR/branch, approve, membuat pipeline, serta play manual job.")
+                return
+        except Exception as error:
+            await self._send(context.chat_id, f"Automation gagal: {escape(str(error))[:400]}")
+            return
+        await self._send(context.chat_id, "Format automation tidak valid.")
 
     async def _select_project(self, context: UserContext, value: str) -> None:
         state = await self._state.get_state(context.bot_user_id)

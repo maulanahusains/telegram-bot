@@ -27,6 +27,7 @@ from app.modules.gitlab_ops.models import (
     GitlabManualScriptPermissionModel,
     GitlabManualScriptRunModel,
     GitlabProjectModel,
+    GitlabProjectServiceCredentialModel,
     GitlabProjectPermissionModel,
     GitlabProjectWebhookModel,
     GitlabPromotionRulePermissionModel,
@@ -53,6 +54,7 @@ ACTION_CONFIRM_MANUAL_SCRIPT = "confirm_manual_script"
 ACTION_APPROVE_AND_RUN = "approve_and_run"
 ACTION_CONFIRM_APPROVE_AND_RUN = "confirm_approve_and_run"
 ACTION_MANAGE_MANUAL_SCRIPTS = "manage_manual_scripts"
+ACTION_MANAGE_AUTOMATION = "manage_automation"
 ACTION_VIEW_NOTIFICATIONS = "view_notifications"
 ACTION_SELECTOR = "selector"
 
@@ -62,7 +64,9 @@ SELECTOR_SCRIPTS = "scripts"
 SELECTOR_RULE = "rule"
 SELECTOR_SUBSCRIBE = "subscribe"
 SELECTOR_SCRIPT_GRANT = "script_grant"
+SELECTOR_AUTOMATION = "automation"
 SELECTOR_PAGE_SIZE = 10
+AUTOMATION_AUTHOR_PAGE_SIZE = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +137,9 @@ class GitlabOpsService:
         if flow == SELECTOR_SCRIPT_GRANT:
             projects = await self.repository.projects_for_user(session, bot_user_id=context.bot_user_id, chat_row_id=chat_id)
             return [project for project in projects if await self._can_manage_scripts(session, project.id, context.bot_user_id, chat_id=chat_id) and await self._identity_for_user(session, context.internal_user_id, instance_id=project.instance_id) is not None and await self.repository.manual_mappings(session, project_id=project.id)]
+        if flow == SELECTOR_AUTOMATION:
+            projects = await self.repository.projects_for_user(session, bot_user_id=context.bot_user_id, action=ACTION_MANAGE_AUTOMATION, chat_row_id=chat_id)
+            return [project for project in projects if await self._identity_for_user(session, context.internal_user_id, instance_id=project.instance_id) is not None]
         return []
 
     async def _promotion_options(self, session, context: UserContext, *, chat_id: int | None) -> list[tuple[GitlabProjectModel, GitlabPromotionRuleModel]]:
@@ -155,6 +162,9 @@ class GitlabOpsService:
             await self.repository.permission(session, project_id=project_id, bot_user_id=bot_user_id, chat_row_id=chat_id, action=ACTION_MANAGE_MANUAL_SCRIPTS) is not None
             or await self.repository.permission(session, project_id=project_id, bot_user_id=bot_user_id, chat_row_id=chat_id, action=ACTION_INVOKE_PROMOTION) is not None
         )
+
+    async def _can_manage_automation(self, session, project_id: int, bot_user_id: int, *, chat_id: int | None = None) -> bool:
+        return await self.repository.permission(session, project_id=project_id, bot_user_id=bot_user_id, chat_row_id=chat_id, action=ACTION_MANAGE_AUTOMATION) is not None
 
     async def _project_selector_markup(self, session, context: UserContext, flow: str, projects: list[GitlabProjectModel], page: int) -> CallbackReply:
         page, total_pages = _page_bounds(len(projects), page)
@@ -193,6 +203,8 @@ class GitlabOpsService:
             return "Tidak ada project dengan promotion rule yang boleh kamu jalankan."
         if flow == SELECTOR_SCRIPT_GRANT:
             return "Tidak ada project manual script yang boleh kamu kelola."
+        if flow == SELECTOR_AUTOMATION:
+            return "Tidak ada project automation yang boleh kamu kelola. Pastikan identity GitLab kamu masih terhubung dan memiliki permission automation."
         return f"Tidak ada project yang bisa kamu gunakan untuk {selector_label(flow)}."
 
     async def _selector_authorized(self, session, context: UserContext, target: dict[str, Any]) -> bool:
@@ -229,6 +241,13 @@ class GitlabOpsService:
                 mapping = await self.repository.manual_mapping(session, _int_value(target.get("mapping_id")) or 0)
                 return mapping is not None and mapping.project_id == project_id and mapping.active
             return True
+        if flow == SELECTOR_AUTOMATION:
+            if not await self._can_manage_automation(session, project_id, context.bot_user_id, chat_id=chat_id):
+                return False
+            author_id = _int_value(target.get("external_author_id"))
+            if kind == "automation_remove_author" and author_id is not None:
+                return await self.repository.automation_author_allowed(session, project_id=project_id, external_author_id=author_id)
+            return True
         return False
 
     async def _handle_selector(self, context: UserContext, target: dict[str, Any], edit_message_id: int | None) -> CallbackReply | str:
@@ -247,6 +266,8 @@ class GitlabOpsService:
                 reply = await self._script_branch_selector_reply(context, project_id, page=page)
             elif flow == SELECTOR_SCRIPT_GRANT:
                 reply = await self._mapping_selector_reply(context, project_id, page=page)
+            elif flow == SELECTOR_AUTOMATION:
+                reply = await self.automation_menu_reply(context, project_id)
             else:
                 reply = "Selector sudah tidak tersedia."
             return _with_edit_message(reply, edit_message_id)
@@ -265,6 +286,8 @@ class GitlabOpsService:
                 return CallbackReply(text="Kirim subscription dengan format `failures|all | branch1,release/*`.", edit_message_id=edit_message_id, next_state="gitlab_subscribe_input", next_state_data={"project_id": project_id, "chat_id": context.chat_id})
             if flow == SELECTOR_SCRIPT_GRANT:
                 return _with_edit_message(await self._mapping_selector_reply(context, project_id), edit_message_id)
+            if flow == SELECTOR_AUTOMATION:
+                return _with_edit_message(await self.automation_menu_reply(context, project_id), edit_message_id)
         if kind == "rule":
             rule_id = _int_value(target.get("rule_id"))
             if rule_id is None:
@@ -326,7 +349,60 @@ class GitlabOpsService:
             return CallbackReply(text="Kirim label Telegram untuk job ini, misalnya `Run Development`.", edit_message_id=edit_message_id, next_state="gitlab_script_label", next_state_data={"project_id": project_id, "target_branch": target.get("target_branch"), "job_name": target.get("job_name"), "chat_id": context.chat_id})
         if kind == "mapping":
             return CallbackReply(text="Kirim Telegram user ID target untuk mapping script ini.", edit_message_id=edit_message_id, next_state="gitlab_grant_user", next_state_data={"project_id": project_id, "mapping_id": target.get("mapping_id"), "chat_id": context.chat_id})
+        if kind == "automation_set_pat":
+            return CallbackReply(text="Kirim PAT service account GitLab sekarang. Token harus memiliki scope api dan akses project untuk membaca MR/branch, approve, membuat pipeline, serta play manual job.", edit_message_id=edit_message_id, next_state="gitlab_automation_pat", next_state_data={"project_id": project_id, "chat_id": context.chat_id})
+        if kind == "automation_add_author":
+            return CallbackReply(text="Kirim GitLab username author dalam format <code>@username</code>.", edit_message_id=edit_message_id, next_state="gitlab_automation_author", next_state_data={"project_id": project_id, "chat_id": context.chat_id})
+        if kind == "automation_remove_author":
+            author_id = _int_value(target.get("external_author_id"))
+            if author_id is None:
+                return "Author allowlist tidak valid."
+            result = await self.remove_automation_author(context, project_id or 0, author_id)
+            menu = await self.automation_menu_reply(context, project_id or 0)
+            if not isinstance(menu, CallbackReply):
+                return menu
+            return CallbackReply(text=f"{result}\n\n{menu.text}", reply_markup=menu.reply_markup, edit_message_id=edit_message_id)
+        if kind == "automation_menu_page":
+            return _with_edit_message(await self.automation_menu_reply(context, project_id or 0, page=page), edit_message_id)
         return "Aksi selector tidak dikenali."
+
+    async def automation_menu_reply(self, context: UserContext, project_id: int, *, page: int = 0) -> CallbackReply | str:
+        async with self.database.transaction() as session:
+            chat_id = await self._chat_row_id(session, context.chat_id)
+            project = await self.repository.get_project(session, project_id)
+            if project is None or not project.active or not await self._can_manage_automation(session, project_id, context.bot_user_id, chat_id=chat_id):
+                return "Project automation tidak ditemukan atau kamu tidak punya izin."
+            credential = await self.repository.service_credential(session, project_id=project_id)
+            authors = await self.repository.automation_allowlist(session, project_id=project_id)
+            state = "aktif" if credential and credential.token_ciphertext else "belum dikonfigurasi"
+            lines = [f"<b>Automation</b> · <code>{_escape(project.namespace_path)}</code> · <code>{state}</code>"]
+            if credential:
+                lines.append(f"Service account: {_escape(credential.label)}")
+            lines.append("Pilih aksi di bawah. Hapus author lewat tombol pada daftar allowlist.")
+            buttons: list[list[dict[str, str]]] = []
+            for label, kind in (("Set / Replace service PAT", "automation_set_pat"), ("Add allowlist author", "automation_add_author")):
+                key = await self._create_callback_in_session(session, action_type=ACTION_SELECTOR, project_id=project_id, target={"kind": kind, "flow": SELECTOR_AUTOMATION, "project_id": project_id}, expected_sha=None, bot_user_id=context.bot_user_id, chat_row_id=chat_id)
+                buttons.append([{"text": label, "callback_data": key}])
+            if authors:
+                lines.append("<b>Allowlist</b>")
+                page, total_pages = _page_bounds(len(authors), page, page_size=AUTOMATION_AUTHOR_PAGE_SIZE)
+                for author in authors[page * AUTOMATION_AUTHOR_PAGE_SIZE : (page + 1) * AUTOMATION_AUTHOR_PAGE_SIZE]:
+                    label = f"Remove @{author.username or author.external_author_id}"
+                    key = await self._create_callback_in_session(session, action_type=ACTION_SELECTOR, project_id=project_id, target={"kind": "automation_remove_author", "flow": SELECTOR_AUTOMATION, "project_id": project_id, "external_author_id": author.external_author_id}, expected_sha=None, bot_user_id=context.bot_user_id, chat_row_id=chat_id)
+                    buttons.append([{"text": label[:64], "callback_data": key}])
+                if total_pages > 1:
+                    navigation: list[dict[str, str]] = []
+                    if page > 0:
+                        key = await self._create_callback_in_session(session, action_type=ACTION_SELECTOR, project_id=project_id, target={"kind": "automation_menu_page", "flow": SELECTOR_AUTOMATION, "project_id": project_id, "page": page - 1}, expected_sha=None, bot_user_id=context.bot_user_id, chat_row_id=chat_id)
+                        navigation.append({"text": "⬅️ Sebelumnya", "callback_data": key})
+                    if page + 1 < total_pages:
+                        key = await self._create_callback_in_session(session, action_type=ACTION_SELECTOR, project_id=project_id, target={"kind": "automation_menu_page", "flow": SELECTOR_AUTOMATION, "project_id": project_id, "page": page + 1}, expected_sha=None, bot_user_id=context.bot_user_id, chat_row_id=chat_id)
+                        navigation.append({"text": "Berikutnya ➡️", "callback_data": key})
+                    buttons.append(navigation)
+                    lines.append(f"Halaman allowlist {page + 1}/{total_pages}")
+            else:
+                lines.append("<b>Allowlist:</b> kosong")
+            return CallbackReply(text="\n".join(lines), reply_markup={"inline_keyboard": buttons})
 
     async def _rule_selector_reply(self, context: UserContext, project_id: int, *, page: int = 0) -> CallbackReply | str:
         async with self.database.transaction() as session:
@@ -447,7 +523,7 @@ class GitlabOpsService:
             if instance is None:
                 raise ValueError("GitLab instance tidak ditemukan.")
             project = await self.repository.save_project(session, instance_id=instance.id, external_project_id=int(project_data["id"]), namespace_path=str(project_data["path_with_namespace"]), name=str(project_data["name"]), web_url=project_data.get("web_url"), default_branch=str(project_data.get("default_branch") or "main"))
-            await self.repository.save_permission(session, project_id=project.id, bot_user_id=context.bot_user_id, action_set=["view_notifications", ACTION_CREATE_MR, ACTION_APPROVE_MR, ACTION_MERGE_MR, ACTION_INVOKE_PROMOTION, ACTION_INVOKE_PRODUCTION, ACTION_MANAGE_MANUAL_SCRIPTS], allowed_chat_id=None)
+            await self.repository.save_permission(session, project_id=project.id, bot_user_id=context.bot_user_id, action_set=["view_notifications", ACTION_CREATE_MR, ACTION_APPROVE_MR, ACTION_MERGE_MR, ACTION_INVOKE_PROMOTION, ACTION_INVOKE_PRODUCTION, ACTION_MANAGE_MANUAL_SCRIPTS, ACTION_MANAGE_AUTOMATION], allowed_chat_id=None)
             route_key = secrets.token_urlsafe(24)
             secret = secrets.token_urlsafe(32)
             trigger = {"push_events": True, "merge_requests_events": True, "pipeline_events": True, "deployment_events": True, "job_events": True}
@@ -580,6 +656,69 @@ class GitlabOpsService:
                 raise ValueError("User target belum pernah berinteraksi dengan bot ini.")
             await self.repository.save_manual_permission(session, mapping_id=mapping.id, bot_user_id=target_user.id)
         return f"Izin manual script <b>{_escape(mapping.telegram_label)}</b> diberikan ke Telegram user <code>{telegram_user_id}</code>."
+
+    async def configure_automation(self, context: UserContext, project_id: int, token: str, *, label: str = "GitLab service account") -> str:
+        """Validate and save a project-scoped service token; it is never used for user actions."""
+        async with self.database.session() as session:
+            project = await self.repository.get_project(session, project_id)
+            if project is None or not await self._can_manage_automation(session, project_id, context.bot_user_id):
+                raise PermissionError("Kamu tidak punya izin mengelola automation project ini.")
+            owner_identity = await self._identity_for_user(session, context.internal_user_id, instance_id=project.instance_id)
+            instance = await session.get(GitlabInstanceModel, project.instance_id)
+        if owner_identity is None or instance is None:
+            raise ValueError("Hubungkan identity GitLab pemilik konfigurasi terlebih dahulu.")
+        service_client = GitlabApiClient(self.http, instance.base_url, token)
+        service_user = await service_client.current_user()
+        # Reading a known branch proves the credential can access this project.
+        await service_client.branch(project.external_project_id, project.default_branch)
+        async with self.database.transaction() as session:
+            await self.repository.save_service_credential(
+                session,
+                project_id=project_id,
+                token_ciphertext=self.cipher.encrypt(token),
+                label=label[:255] or "GitLab service account",
+                configured_by_bot_user_id=context.bot_user_id,
+                configured_by_external_user_id=owner_identity.external_user_id,
+            )
+        return f"Automation aktif untuk <b>{_escape(project.namespace_path)}</b> dengan service account <b>{_escape(service_user.name or service_user.username or str(service_user.external_user_id))}</b>."
+
+    async def automation_status(self, context: UserContext, project_id: int) -> str:
+        async with self.database.session() as session:
+            project = await self.repository.get_project(session, project_id)
+            if project is None or not await self._can_manage_automation(session, project_id, context.bot_user_id):
+                raise PermissionError("Project tidak ditemukan atau kamu tidak punya izin automation.")
+            credential = await self.repository.service_credential(session, project_id=project_id)
+            authors = await self.repository.automation_allowlist(session, project_id=project_id)
+        state = "aktif" if credential and credential.token_ciphertext else "belum dikonfigurasi"
+        lines = [f"<b>Automation</b> · {_escape(project.namespace_path)} · <code>{state}</code>"]
+        if credential:
+            lines.append(f"Service account: {_escape(credential.label)}")
+        lines.append("Allowlist: " + (", ".join(f"@{_escape(author.username or str(author.external_author_id))}" for author in authors) if authors else "kosong"))
+        return "\n".join(lines)
+
+    async def add_automation_author(self, context: UserContext, project_id: int, username: str) -> str:
+        clean_username = username.removeprefix("@").strip()
+        if not clean_username or any(char.isspace() for char in clean_username):
+            raise ValueError("Masukkan username GitLab dalam format @username.")
+        async with self.database.session() as session:
+            project = await self.repository.get_project(session, project_id)
+            if project is None or not await self._can_manage_automation(session, project_id, context.bot_user_id):
+                raise PermissionError("Kamu tidak punya izin mengelola automation project ini.")
+            credential = await self.repository.service_credential(session, project_id=project_id)
+            instance = await session.get(GitlabInstanceModel, project.instance_id)
+        if credential is None or not credential.token_ciphertext or instance is None:
+            raise ValueError("Simpan PAT service account dahulu lewat /gitlab automation <project_id>.")
+        user = await self._service_client(instance, credential).user_by_username(clean_username)
+        async with self.database.transaction() as session:
+            await self.repository.save_automation_author(session, project_id=project_id, external_author_id=user.external_user_id, username=user.username or clean_username)
+        return f"@{_escape(user.username or clean_username)} ditambahkan ke allowlist (GitLab ID <code>{user.external_user_id}</code>)."
+
+    async def remove_automation_author(self, context: UserContext, project_id: int, external_author_id: int) -> str:
+        async with self.database.transaction() as session:
+            if not await self._can_manage_automation(session, project_id, context.bot_user_id):
+                raise PermissionError("Kamu tidak punya izin mengelola automation project ini.")
+            removed = await self.repository.remove_automation_author(session, project_id=project_id, external_author_id=external_author_id)
+        return "Author dihapus dari allowlist." if removed else "Author allowlist tidak ditemukan."
 
     async def deploy(self, context: UserContext, project_id: int, rule_name: str) -> str:
         async with self.database.session() as session:
@@ -764,6 +903,8 @@ class GitlabOpsService:
                     mapping = await self.repository.manual_mapping(session, int(mapping_id)) if mapping_id else None
                     if mapping is None or mapping.project_id != project.id or not mapping.active or await self.repository.manual_permission(session, mapping_id=mapping.id, bot_user_id=context.bot_user_id) is None:
                         permission = None
+                    if action.target.get("use_service_account") and not await self._can_manage_automation(session, project.id, context.bot_user_id, chat_id=chat.id):
+                        permission = None
                 if permission is None or instance is None:
                     await self.repository.audit(session, action=f"callback:{action.action_type}", result="denied", bot_user_id=context.bot_user_id, project_id=project.id, metadata_={"reason": "permission"})
                     return "Kamu tidak berwenang menjalankan aksi ini."
@@ -849,6 +990,12 @@ class GitlabOpsService:
 
     async def _execute_callback(self, context: UserContext, action: GitlabCallbackActionModel, project: GitlabProjectModel, instance: GitlabInstanceModel, identity: GitlabUserIdentityModel) -> str | CallbackReply:
         client = self._client(instance, identity)
+        if action.target.get("use_service_account"):
+            async with self.database.session() as session:
+                credential = await self.repository.service_credential(session, project_id=project.id)
+            if credential is None or credential.configured_by_bot_user_id != context.bot_user_id:
+                return "Service account automation tidak tersedia untuk aksi ini."
+            client = self._service_client(instance, credential)
         if action.action_type in (ACTION_RUN_MANUAL_SCRIPT, ACTION_CONFIRM_MANUAL_SCRIPT, ACTION_APPROVE_AND_RUN, ACTION_CONFIRM_APPROVE_AND_RUN):
             return await self._execute_manual_script_action(context, action, project, client)
         if action.action_type in (ACTION_INVOKE_PROMOTION, ACTION_INVOKE_PRODUCTION):
@@ -990,6 +1137,8 @@ class GitlabOpsService:
             if category == "job":
                 await self._process_job_event(telegram, project, payload)
                 return
+            automation = await self._run_merge_request_automation(project, payload) if category == "merge_request" else None
+            suppress_push_runs = await self._should_suppress_push_runs(project, payload, branch) if category == "push" else False
             subscriptions = await self.repository.subscriptions(session, project_id=project.id, category=category)
             chats = {subscription.telegram_chat_id: await session.get(TelegramChatModel, subscription.telegram_chat_id) for subscription in subscriptions}
         if not subscriptions:
@@ -1009,7 +1158,7 @@ class GitlabOpsService:
                 actions: list[tuple[str, str]] = []
                 if category == "merge_request":
                     authorized = await session.scalar(select(GitlabProjectPermissionModel).where(GitlabProjectPermissionModel.project_id == project.id, GitlabProjectPermissionModel.allowed_chat_id.is_(None) | (GitlabProjectPermissionModel.allowed_chat_id == chat.id), GitlabProjectPermissionModel.active.is_(True)).order_by(GitlabProjectPermissionModel.bot_user_id))
-                    if authorized and ACTION_APPROVE_MR in authorized.action_set:
+                    if automation not in {"success", "protected"} and authorized and ACTION_APPROVE_MR in authorized.action_set:
                         approve_key = await self._create_callback_in_session(session, action_type=ACTION_APPROVE_MR, project_id=project.id, target={"iid": payload.get("object_attributes", {}).get("iid")}, expected_sha=payload.get("object_attributes", {}).get("last_commit", {}).get("id"), bot_user_id=authorized.bot_user_id, chat_row_id=chat.id)
                         actions.append(("Approve", approve_key))
                     if authorized and ACTION_MERGE_MR in authorized.action_set:
@@ -1020,19 +1169,28 @@ class GitlabOpsService:
                     mr_sha = (attrs.get("last_commit") or {}).get("id")
                     for mapping in await self.repository.manual_mappings(session, project_id=project.id, target_branch=target_branch):
                         script_permission = await session.scalar(select(GitlabManualScriptPermissionModel).where(GitlabManualScriptPermissionModel.mapping_id == mapping.id, GitlabManualScriptPermissionModel.active.is_(True)).order_by(GitlabManualScriptPermissionModel.bot_user_id))
-                        if authorized and script_permission and ACTION_APPROVE_MR in authorized.action_set:
+                        if automation == "protected" and await self._automation_owner_can_confirm(session, project.id, mapping.id, chat.id):
+                            credential = await self.repository.service_credential(session, project_id=project.id)
+                            if credential and credential.configured_by_bot_user_id:
+                                action_key = await self._create_callback_in_session(session, action_type=ACTION_CONFIRM_APPROVE_AND_RUN, project_id=project.id, target={"iid": attrs.get("iid"), "mapping_id": mapping.id, "origin_resource_id": str(attrs.get("iid") or ""), "origin_resource_type": "merge_request", "use_service_account": True}, expected_sha=mr_sha, bot_user_id=credential.configured_by_bot_user_id, chat_row_id=chat.id)
+                                actions.append((f"Confirm Approve & Run {mapping.telegram_label}", action_key))
+                        elif automation not in {"success", "protected"} and authorized and script_permission and ACTION_APPROVE_MR in authorized.action_set:
                             action_key = await self._create_callback_in_session(session, action_type=ACTION_APPROVE_AND_RUN, project_id=project.id, target={"iid": attrs.get("iid"), "mapping_id": mapping.id, "origin_resource_id": str(attrs.get("iid") or ""), "origin_resource_type": "merge_request"}, expected_sha=mr_sha, bot_user_id=script_permission.bot_user_id, chat_row_id=chat.id)
                             label = f"Approve & Run {mapping.telegram_label}"
                             if attrs.get("target_branch") in {"main", "master", "production"}:
                                 label = f"⚠️ Approve & Run {mapping.telegram_label}"
                             actions.append((label, action_key))
-                if category == "push":
+                if category == "push" and not suppress_push_runs:
                     push_sha = str(payload.get("after") or payload.get("checkout_sha") or "")
                     for mapping in await self.repository.manual_mappings(session, project_id=project.id, target_branch=branch):
                         script_permission = await session.scalar(select(GitlabManualScriptPermissionModel).where(GitlabManualScriptPermissionModel.mapping_id == mapping.id, GitlabManualScriptPermissionModel.active.is_(True)).order_by(GitlabManualScriptPermissionModel.bot_user_id))
                         if script_permission and push_sha:
                             action_key = await self._create_callback_in_session(session, action_type=ACTION_RUN_MANUAL_SCRIPT, project_id=project.id, target={"mapping_id": mapping.id, "origin_resource_id": str(payload.get("after") or payload.get("checkout_sha") or "")}, expected_sha=push_sha, bot_user_id=script_permission.bot_user_id, chat_row_id=chat.id)
                             actions.append((f"Run {mapping.telegram_label}", action_key))
+                if automation == "success":
+                    text += "\n\n<b>Automation:</b> service account sudah approve dan menjalankan mapping yang cocok."
+                elif automation == "failed":
+                    text += "\n\n<b>Automation gagal:</b> aksi manual tetap tersedia untuk recovery."
                 markup = action_markup(actions)
             sent: SentMessage
             if was_running and message is not None:
@@ -1114,6 +1272,131 @@ class GitlabOpsService:
     def _client(self, instance: GitlabInstanceModel, identity: GitlabUserIdentityModel) -> GitlabApiClient:
         return GitlabApiClient(self.http, instance.base_url, self.cipher.decrypt(identity.token_ciphertext).get_secret_value())
 
+    def _service_client(self, instance: GitlabInstanceModel, credential: GitlabProjectServiceCredentialModel) -> GitlabApiClient:
+        if not credential.token_ciphertext:
+            raise ValueError("Service credential GitLab tidak tersedia.")
+        return GitlabApiClient(self.http, instance.base_url, self.cipher.decrypt(credential.token_ciphertext).get_secret_value())
+
+    async def _automation_owner_can_confirm(self, session, project_id: int, mapping_id: int, chat_id: int) -> bool:
+        credential = await self.repository.service_credential(session, project_id=project_id)
+        if credential is None or credential.configured_by_bot_user_id is None:
+            return False
+        return (
+            await self.repository.permission(session, project_id=project_id, bot_user_id=credential.configured_by_bot_user_id, chat_row_id=chat_id, action=ACTION_MANAGE_AUTOMATION) is not None
+            and await self.repository.manual_permission(session, mapping_id=mapping_id, bot_user_id=credential.configured_by_bot_user_id) is not None
+        )
+
+    async def _should_suppress_push_runs(self, project: GitlabProjectModel, payload: dict[str, Any], branch: str | None) -> bool:
+        pusher_id = _int_value(payload.get("user_id"))
+        if pusher_id is None or not branch:
+            return False
+        async with self.database.session() as session:
+            credential = await self.repository.service_credential(session, project_id=project.id)
+            instance = await session.get(GitlabInstanceModel, project.instance_id)
+        if credential is None or instance is None or credential.configured_by_external_user_id != pusher_id:
+            return False
+        try:
+            return not (await self._service_client(instance, credential).branch(project.external_project_id, branch)).protected
+        except GitlabApiError:
+            # Preserve the manual recovery path when GitLab branch state cannot be verified.
+            return False
+
+    async def _run_merge_request_automation(self, project: GitlabProjectModel, payload: dict[str, Any]) -> str | None:
+        """Return success, failed, protected, or None. Claims durable records before GitLab writes."""
+        attrs = payload.get("object_attributes") or payload
+        iid = _int_value(attrs.get("iid"))
+        sha = str((attrs.get("last_commit") or {}).get("id") or "")
+        if iid is None or not sha:
+            return None
+        async with self.database.session() as session:
+            credential = await self.repository.service_credential(session, project_id=project.id)
+            instance = await session.get(GitlabInstanceModel, project.instance_id)
+        if credential is None or instance is None:
+            return None
+        client = self._service_client(instance, credential)
+        try:
+            mr = await client.merge_request(project.external_project_id, iid)
+            author_id = _int_value(mr.author.get("id"))
+            if mr.state != "opened" or mr.sha != sha or author_id is None:
+                return None
+            async with self.database.session() as session:
+                if not await self.repository.automation_author_allowed(session, project_id=project.id, external_author_id=author_id):
+                    return None
+                if await self.repository.automation_has_failed_execution(session, project_id=project.id, merge_request_iid=iid, merge_request_sha=sha):
+                    return "failed"
+            target = await client.branch(project.external_project_id, mr.target_branch)
+            if target.protected:
+                return "protected"
+            async with self.database.transaction() as session:
+                approval = await self.repository.claim_automation_execution(session, project_id=project.id, merge_request_iid=iid, merge_request_sha=sha, execution_key=f"mr:{iid}:{sha}:approve", mapping_id=None)
+            if approval is None:
+                async with self.database.session() as session:
+                    existing = await self.repository.automation_execution(session, project_id=project.id, execution_key=f"mr:{iid}:{sha}:approve")
+                if existing is None or existing.status != "success":
+                    return "failed"
+            if approval is not None:
+                try:
+                    await client.approve(project.external_project_id, iid, sha=sha)
+                    approval.status = "success"
+                except GitlabApiError as error:
+                    approval.status = "failed"
+                    approval.error_summary = f"HTTP {error.status_code}"
+                    async with self.database.transaction() as session:
+                        current = await session.get(type(approval), approval.id, with_for_update=True)
+                        if current:
+                            current.status = approval.status
+                            current.error_summary = approval.error_summary
+                    return "failed"
+                async with self.database.transaction() as session:
+                    current = await session.get(type(approval), approval.id, with_for_update=True)
+                    if current:
+                        current.status = approval.status
+                        current.error_summary = approval.error_summary
+            async with self.database.session() as session:
+                mappings = await self.repository.manual_mappings(session, project_id=project.id, target_branch=mr.target_branch)
+            for mapping in mappings:
+                async with self.database.transaction() as session:
+                    execution = await self.repository.claim_automation_execution(session, project_id=project.id, merge_request_iid=iid, merge_request_sha=sha, execution_key=f"mr:{iid}:{sha}:mapping:{mapping.id}", mapping_id=mapping.id)
+                if execution is None:
+                    async with self.database.session() as session:
+                        existing = await self.repository.automation_execution(session, project_id=project.id, execution_key=f"mr:{iid}:{sha}:mapping:{mapping.id}")
+                    if existing is None or existing.status != "running":
+                        return "failed"
+                    continue
+                try:
+                    pipeline = await client.create_pipeline(project.external_project_id, ref=mapping.target_branch)
+                    jobs = await client.pipeline_jobs(project.external_project_id, pipeline.id)
+                    job = next((item for item in jobs if str(item.get("name")) == mapping.job_name), None)
+                    if job is None:
+                        raise GitlabApiError(422, "Manual job mapping tidak ditemukan pada pipeline")
+                    played = await client.play_job(project.external_project_id, int(job["id"]))
+                    execution.status = "running"
+                    execution.pipeline_id = pipeline.id
+                    execution.job_id = _int_value(played.get("id")) or _int_value(job.get("id"))
+                except GitlabApiError as error:
+                    execution.status = "failed"
+                    execution.error_summary = f"HTTP {error.status_code}"
+                    async with self.database.transaction() as session:
+                        current = await session.get(type(execution), execution.id, with_for_update=True)
+                        if current:
+                            current.status = execution.status
+                            current.error_summary = execution.error_summary
+                    return "failed"
+                async with self.database.transaction() as session:
+                    current = await session.get(type(execution), execution.id, with_for_update=True)
+                    if current:
+                        current.status = execution.status
+                        current.pipeline_id = execution.pipeline_id
+                        current.job_id = execution.job_id
+                        current.error_summary = execution.error_summary
+            async with self.database.session() as session:
+                if await self.repository.automation_has_failed_execution(session, project_id=project.id, merge_request_iid=iid, merge_request_sha=sha):
+                    return "failed"
+            return "success"
+        except GitlabApiError as error:
+            await logger.awarning("gitlab_automation_lookup_failed", project_id=project.id, status_code=error.status_code)
+            return "failed"
+
     def _verify_webhook(self, webhook: GitlabProjectWebhookModel, headers: dict[str, str], raw_body: bytes) -> bool:
         provided = headers.get("x-gitlab-token") or headers.get("x-gitlab-webhook-token")
         if not provided:
@@ -1192,8 +1475,8 @@ def _event_category(event_type: str, payload: dict[str, Any]) -> tuple[str | Non
     return None, None
 
 
-def _page_bounds(total_items: int, page: int) -> tuple[int, int]:
-    total_pages = max(1, (total_items + SELECTOR_PAGE_SIZE - 1) // SELECTOR_PAGE_SIZE)
+def _page_bounds(total_items: int, page: int, *, page_size: int = SELECTOR_PAGE_SIZE) -> tuple[int, int]:
+    total_pages = max(1, (total_items + page_size - 1) // page_size)
     return min(max(page, 0), total_pages - 1), total_pages
 
 
@@ -1205,6 +1488,7 @@ def selector_label(flow: str) -> str:
         SELECTOR_RULE: "promotion rule",
         SELECTOR_SUBSCRIBE: "subscription",
         SELECTOR_SCRIPT_GRANT: "grant manual script",
+        SELECTOR_AUTOMATION: "automation",
     }.get(flow, "operasi GitLab")
 
 

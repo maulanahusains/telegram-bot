@@ -64,6 +64,8 @@ class GitlabProjectServiceCredentialModel(TimestampMixin, Base):
     token_ciphertext: Mapped[str | None] = mapped_column(Text)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
+    configured_by_bot_user_id: Mapped[int | None] = mapped_column(ForeignKey("bot_users.id", ondelete="SET NULL"))
+    configured_by_external_user_id: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class GitlabProjectWebhookModel(TimestampMixin, Base):
@@ -179,6 +181,35 @@ class GitlabManualScriptRunModel(TimestampMixin, Base):
     job_url: Mapped[str | None] = mapped_column(String(1024))
     failure_reason: Mapped[str | None] = mapped_column(Text)
     actor_bot_user_id: Mapped[int | None] = mapped_column(ForeignKey("bot_users.id", ondelete="SET NULL"), nullable=True)
+
+
+class GitlabAutomationAllowlistModel(TimestampMixin, Base):
+    __tablename__ = "gitlab_automation_allowlist"
+    __table_args__ = (UniqueConstraint("project_id", "external_author_id", name="uq_gitlab_automation_allowlist_author"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("gitlab_projects.id", ondelete="CASCADE"), nullable=False)
+    external_author_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(255))
+
+
+class GitlabAutomationExecutionModel(TimestampMixin, Base):
+    __tablename__ = "gitlab_automation_executions"
+    __table_args__ = (
+        UniqueConstraint("project_id", "execution_key", name="uq_gitlab_automation_execution_key"),
+        Index("ix_gitlab_automation_execution_status", "project_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("gitlab_projects.id", ondelete="CASCADE"), nullable=False)
+    mapping_id: Mapped[int | None] = mapped_column(ForeignKey("gitlab_manual_script_mappings.id", ondelete="SET NULL"))
+    merge_request_iid: Mapped[int] = mapped_column(Integer, nullable=False)
+    merge_request_sha: Mapped[str] = mapped_column(String(128), nullable=False)
+    execution_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="requested", nullable=False)
+    pipeline_id: Mapped[int | None] = mapped_column(BigInteger)
+    job_id: Mapped[int | None] = mapped_column(BigInteger)
+    error_summary: Mapped[str | None] = mapped_column(Text)
 
 
 class GitlabWebhookInboxModel(TimestampMixin, Base):

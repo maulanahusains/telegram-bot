@@ -55,6 +55,12 @@ class GitlabApiClient:
     async def current_user(self) -> GitlabUserValue:
         return GitlabUserValue.model_validate(await self._request("GET", "/user"))
 
+    async def user_by_username(self, username: str) -> GitlabUserValue:
+        values = await self._request("GET", "/users", params={"username": username, "per_page": 2})
+        if not isinstance(values, list) or len(values) != 1:
+            raise GitlabApiError(404, "GitLab username tidak ditemukan atau tidak unik")
+        return GitlabUserValue.model_validate(values[0])
+
     async def projects(self) -> AsyncIterator[GitlabProjectValue]:
         page = 1
         while True:

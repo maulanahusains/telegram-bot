@@ -4,10 +4,13 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import and_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.gitlab_ops.models import (
     GitlabAuditEventModel,
+    GitlabAutomationAllowlistModel,
+    GitlabAutomationExecutionModel,
     GitlabCallbackActionModel,
     GitlabInstanceModel,
     GitlabNotificationMessageModel,
@@ -16,6 +19,7 @@ from app.modules.gitlab_ops.models import (
     GitlabManualScriptPermissionModel,
     GitlabManualScriptRunModel,
     GitlabProjectModel,
+    GitlabProjectServiceCredentialModel,
     GitlabProjectPermissionModel,
     GitlabProjectWebhookModel,
     GitlabPromotionRuleModel,
@@ -27,6 +31,63 @@ from app.platform.users.models import BotUserModel, TelegramUserModel
 
 
 class GitlabOpsRepository:
+    async def service_credential(self, session: AsyncSession, *, project_id: int) -> GitlabProjectServiceCredentialModel | None:
+        return await session.scalar(select(GitlabProjectServiceCredentialModel).where(GitlabProjectServiceCredentialModel.project_id == project_id, GitlabProjectServiceCredentialModel.status == "active"))
+
+    async def save_service_credential(self, session: AsyncSession, *, project_id: int, token_ciphertext: str, label: str, configured_by_bot_user_id: int, configured_by_external_user_id: int) -> GitlabProjectServiceCredentialModel:
+        model = await self.service_credential(session, project_id=project_id)
+        if model is None:
+            model = GitlabProjectServiceCredentialModel(project_id=project_id, token_ciphertext=token_ciphertext, label=label, configured_by_bot_user_id=configured_by_bot_user_id, configured_by_external_user_id=configured_by_external_user_id)
+            session.add(model)
+        else:
+            model.token_ciphertext = token_ciphertext
+            model.label = label
+            model.configured_by_bot_user_id = configured_by_bot_user_id
+            model.configured_by_external_user_id = configured_by_external_user_id
+            model.status = "active"
+        await session.flush()
+        return model
+
+    async def automation_allowlist(self, session: AsyncSession, *, project_id: int) -> list[GitlabAutomationAllowlistModel]:
+        return list((await session.scalars(select(GitlabAutomationAllowlistModel).where(GitlabAutomationAllowlistModel.project_id == project_id).order_by(GitlabAutomationAllowlistModel.username, GitlabAutomationAllowlistModel.external_author_id))).all())
+
+    async def automation_author_allowed(self, session: AsyncSession, *, project_id: int, external_author_id: int) -> bool:
+        return await session.scalar(select(GitlabAutomationAllowlistModel.id).where(GitlabAutomationAllowlistModel.project_id == project_id, GitlabAutomationAllowlistModel.external_author_id == external_author_id)) is not None
+
+    async def save_automation_author(self, session: AsyncSession, *, project_id: int, external_author_id: int, username: str | None) -> GitlabAutomationAllowlistModel:
+        model = await session.scalar(select(GitlabAutomationAllowlistModel).where(GitlabAutomationAllowlistModel.project_id == project_id, GitlabAutomationAllowlistModel.external_author_id == external_author_id))
+        if model is None:
+            model = GitlabAutomationAllowlistModel(project_id=project_id, external_author_id=external_author_id, username=username)
+            session.add(model)
+        else:
+            model.username = username
+        await session.flush()
+        return model
+
+    async def remove_automation_author(self, session: AsyncSession, *, project_id: int, external_author_id: int) -> bool:
+        model = await session.scalar(select(GitlabAutomationAllowlistModel).where(GitlabAutomationAllowlistModel.project_id == project_id, GitlabAutomationAllowlistModel.external_author_id == external_author_id).with_for_update())
+        if model is None:
+            return False
+        await session.delete(model)
+        return True
+
+    async def claim_automation_execution(self, session: AsyncSession, *, project_id: int, merge_request_iid: int, merge_request_sha: str, execution_key: str, mapping_id: int | None) -> GitlabAutomationExecutionModel | None:
+        existing = await session.scalar(select(GitlabAutomationExecutionModel).where(GitlabAutomationExecutionModel.project_id == project_id, GitlabAutomationExecutionModel.execution_key == execution_key))
+        if existing is not None:
+            return None
+        model = GitlabAutomationExecutionModel(project_id=project_id, mapping_id=mapping_id, merge_request_iid=merge_request_iid, merge_request_sha=merge_request_sha, execution_key=execution_key)
+        session.add(model)
+        try:
+            await session.flush()
+        except IntegrityError:
+            return None
+        return model
+
+    async def automation_has_failed_execution(self, session: AsyncSession, *, project_id: int, merge_request_iid: int, merge_request_sha: str) -> bool:
+        return await session.scalar(select(GitlabAutomationExecutionModel.id).where(GitlabAutomationExecutionModel.project_id == project_id, GitlabAutomationExecutionModel.merge_request_iid == merge_request_iid, GitlabAutomationExecutionModel.merge_request_sha == merge_request_sha, GitlabAutomationExecutionModel.status == "failed")) is not None
+
+    async def automation_execution(self, session: AsyncSession, *, project_id: int, execution_key: str) -> GitlabAutomationExecutionModel | None:
+        return await session.scalar(select(GitlabAutomationExecutionModel).where(GitlabAutomationExecutionModel.project_id == project_id, GitlabAutomationExecutionModel.execution_key == execution_key))
     async def get_instance(self, session: AsyncSession, base_url: str) -> GitlabInstanceModel | None:
         return await session.scalar(select(GitlabInstanceModel).where(GitlabInstanceModel.base_url == base_url))
 
