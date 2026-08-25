@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     life_goal_recommendation_delta_kcal: int = Field(default=100, ge=1, le=1000)
     life_goal_recommendation_tolerance_kg_per_week: Decimal = Field(default=Decimal("0.10"), ge=0, le=5, max_digits=5, decimal_places=2)
 
+    gitlab_ops_executor_enabled: bool = False
+    gitlab_ops_executor_interval_seconds: int = Field(default=15, ge=5, le=300)
+    gitlab_ops_executor_batch_size: int = Field(default=50, ge=1, le=200)
+
     @model_validator(mode="after")
     def validate_session_cookie(self) -> Settings:
         if (

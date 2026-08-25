@@ -1,0 +1,38 @@
+workflow:
+  rules:
+    # Push and merge-request events must never create a pipeline automatically.
+    # The GitLab Ops bot creates a pipeline explicitly through the GitLab API.
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+    - when: never
+
+stages:
+  - operations
+
+# This is a safe placeholder for the branch-specific manual-operation pattern.
+# Replace the echo command with the real development deployment script only
+# after its runner, variables, and GitLab protected-branch settings are ready.
+run_development_script:
+  stage: operations
+  environment:
+    name: development
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+      when: manual
+      allow_failure: false
+    - when: never
+  script:
+    - echo "Development operation placeholder for ${CI_COMMIT_SHA}"
+
+# Keep production separate from development. GitLab protected-branch and
+# protected-environment permissions remain the authoritative safeguards.
+run_production_script:
+  stage: operations
+  environment:
+    name: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "production" || $CI_COMMIT_BRANCH == "main"'
+      when: manual
+      allow_failure: false
+    - when: never
+  script:
+    - echo "Production operation placeholder for ${CI_COMMIT_SHA}"

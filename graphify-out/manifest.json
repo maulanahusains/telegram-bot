@@ -1,18 +1,18 @@
 {
   "AGENTS.md": {
-    "mtime": 1785583271.1540856,
-    "ast_hash": "724b0f69b9b612bd112668e132570fcd",
-    "semantic_hash": ""
+    "mtime": 1786810311.9525201,
+    "ast_hash": "9b40258f6e3eae45558945688aab8fcb",
+    "semantic_hash": "9b40258f6e3eae45558945688aab8fcb"
   },
   "README.md": {
-    "mtime": 1786809964.5181046,
-    "ast_hash": "2cef2f50607f7833cbd15ec97325c042",
-    "semantic_hash": "2cef2f50607f7833cbd15ec97325c042"
+    "mtime": 1786812876.8072674,
+    "ast_hash": "b85508747be2726bc16554a0b0668b66",
+    "semantic_hash": "b85508747be2726bc16554a0b0668b66"
   },
   "docker-compose.yml": {
-    "mtime": 1785586322.349706,
-    "ast_hash": "e1992a8e16a03f857a1021459d07380c",
-    "semantic_hash": ""
+    "mtime": 1786816128.1540906,
+    "ast_hash": "c4ab8f9cc2c8cd49f5daa2bdb3ebdcbe",
+    "semantic_hash": "c4ab8f9cc2c8cd49f5daa2bdb3ebdcbe"
   },
   "backend/app/__init__.py": {
     "mtime": 1785480101.796445,
@@ -50,9 +50,9 @@
     "semantic_hash": "d7ee59b0ba2e55723cbb839e7fee4f05"
   },
   "backend/app/core/config.py": {
-    "mtime": 1785584897.700416,
-    "ast_hash": "dcda5baa016aab67c45b7b24487c8af3",
-    "semantic_hash": "dcda5baa016aab67c45b7b24487c8af3"
+    "mtime": 1787499382.369862,
+    "ast_hash": "c101edcd179f22569a5cf046eaa2af21",
+    "semantic_hash": "c101edcd179f22569a5cf046eaa2af21"
   },
   "backend/app/core/database.py": {
     "mtime": 1785480101.7994866,
@@ -60,14 +60,14 @@
     "semantic_hash": "2f15fba0eaa2ec3e966bc15a95d6050d"
   },
   "backend/app/core/lifespan.py": {
-    "mtime": 1785592324.7825606,
-    "ast_hash": "2c19802c7a6d9138021571ed8c86c59a",
-    "semantic_hash": "2c19802c7a6d9138021571ed8c86c59a"
+    "mtime": 1786811893.908754,
+    "ast_hash": "5f0325d166e956236aa8e5a45ee58619",
+    "semantic_hash": "5f0325d166e956236aa8e5a45ee58619"
   },
   "backend/app/core/logging.py": {
-    "mtime": 1785480101.7996402,
-    "ast_hash": "f8ea086d84ed779ffbb60915df0c1781",
-    "semantic_hash": "f8ea086d84ed779ffbb60915df0c1781"
+    "mtime": 1786812093.1597028,
+    "ast_hash": "6cf35987409460e07912b24426322128",
+    "semantic_hash": "6cf35987409460e07912b24426322128"
   },
   "backend/app/core/middleware.py": {
     "mtime": 1785480928.0246806,
@@ -80,9 +80,9 @@
     "semantic_hash": "54fc541a317f1ea28853c6859f0fed04"
   },
   "backend/app/core/registry.py": {
-    "mtime": 1785592324.7815604,
-    "ast_hash": "06d11f83ebc8a3a26e4f2dae62864f17",
-    "semantic_hash": "06d11f83ebc8a3a26e4f2dae62864f17"
+    "mtime": 1786811893.908754,
+    "ast_hash": "c685775b1f36c460f47d70500c840c46",
+    "semantic_hash": "c685775b1f36c460f47d70500c840c46"
   },
   "backend/app/core/telegram_client.py": {
     "mtime": 1785593128.1779416,
@@ -90,9 +90,9 @@
     "semantic_hash": "a551d783024016c0e7bc506e29f0f9cf"
   },
   "backend/app/main.py": {
-    "mtime": 1785584954.5400097,
-    "ast_hash": "d83fccc4857096d987c854a9aac4167a",
-    "semantic_hash": "d83fccc4857096d987c854a9aac4167a"
+    "mtime": 1787499382.370862,
+    "ast_hash": "f31118334d428a06bd46a619ad32198b",
+    "semantic_hash": "f31118334d428a06bd46a619ad32198b"
   },
   "backend/app/modules/__init__.py": {
     "mtime": 1785480101.7974448,
@@ -335,9 +335,9 @@
     "semantic_hash": "57de5ec361fe2076b8c10850d215443d"
   },
   "backend/app/shared/exceptions.py": {
-    "mtime": 1785585651.1760507,
-    "ast_hash": "fba920391c9f9a2ded1787831f9fe913",
-    "semantic_hash": "fba920391c9f9a2ded1787831f9fe913"
+    "mtime": 1786813970.6518292,
+    "ast_hash": "2919e266e5cf0992dbd19f03632c03ea",
+    "semantic_hash": "2919e266e5cf0992dbd19f03632c03ea"
   },
   "backend/app/shared/responses.py": {
     "mtime": 1785480101.8000546,
@@ -355,9 +355,9 @@
     "semantic_hash": "b560f1b1feb4ea76ed6c1fc83d277070"
   },
   "backend/migrations/env.py": {
-    "mtime": 1785592865.2072158,
-    "ast_hash": "a3c45ded133e787ba9b0ff05bbc187ca",
-    "semantic_hash": "a3c45ded133e787ba9b0ff05bbc187ca"
+    "mtime": 1787499392.7110178,
+    "ast_hash": "804db3c378497c04917705e13ac1f93f",
+    "semantic_hash": "804db3c378497c04917705e13ac1f93f"
   },
   "backend/migrations/versions/20260731_0001_initial_platform.py": {
     "mtime": 1785480596.891752,
@@ -380,38 +380,343 @@
     "semantic_hash": "cf99eac9bd11db10bf806c0ec43d9f1d"
   },
   "backend/README.md": {
-    "mtime": 1786810350.3291183,
-    "ast_hash": "7f6bf9c4dd946948f638aef048cd20ad",
-    "semantic_hash": "7f6bf9c4dd946948f638aef048cd20ad"
+    "mtime": 1786815059.4508822,
+    "ast_hash": "e2bbc294330d7318af767f2865f40821",
+    "semantic_hash": "e2bbc294330d7318af767f2865f40821"
   },
-  "life-docs/API_PLAN.md": {
-    "mtime": 1786810266.586813,
-    "ast_hash": "c806bd017ad70b72b6f2b7c963585c75",
-    "semantic_hash": "c806bd017ad70b72b6f2b7c963585c75"
+  "backend/app/api/user_auth.py": {
+    "mtime": 1786811988.3966782,
+    "ast_hash": "55e6cddbcab2b0bcc1696b4cdc386638",
+    "semantic_hash": "55e6cddbcab2b0bcc1696b4cdc386638"
   },
-  "life-docs/ARCHITECTURE.md": {
-    "mtime": 1786810266.587813,
-    "ast_hash": "5820d7c3d619acb1ff361f78c10245f4",
-    "semantic_hash": "5820d7c3d619acb1ff361f78c10245f4"
+  "backend/app/modules/gitlab_ops/__init__.py": {
+    "mtime": 1787499392.7110178,
+    "ast_hash": "a514afbadf242f5682d77bad000526c5",
+    "semantic_hash": "a514afbadf242f5682d77bad000526c5"
   },
-  "life-docs/DATA_MODEL.md": {
-    "mtime": 1786809735.327532,
-    "ast_hash": "e0ace0d948fa221194f3adb25892f64d",
-    "semantic_hash": "e0ace0d948fa221194f3adb25892f64d"
+  "backend/app/modules/gitlab_ops/api.py": {
+    "mtime": 1787499358.6588573,
+    "ast_hash": "833bbd5dcab2b2451080520bf22bdc22",
+    "semantic_hash": "833bbd5dcab2b2451080520bf22bdc22"
   },
-  "life-docs/PRODUCT.md": {
-    "mtime": 1786810266.585813,
-    "ast_hash": "c50c21f1cdcdc9d0cbeed9c3f2aeba18",
-    "semantic_hash": "c50c21f1cdcdc9d0cbeed9c3f2aeba18"
+  "backend/app/modules/gitlab_ops/bot.py": {
+    "mtime": 1787645851.3758843,
+    "ast_hash": "e2290be317c7d2563ed86b65ea9e2c9f",
+    "semantic_hash": "e2290be317c7d2563ed86b65ea9e2c9f"
   },
-  "life-docs/RELOCATION_PLAN.md": {
-    "mtime": 1786810222.056119,
-    "ast_hash": "3cd3aed92665e4b8dac164cde44bd7e2",
-    "semantic_hash": "3cd3aed92665e4b8dac164cde44bd7e2"
+  "backend/app/modules/gitlab_ops/formatting.py": {
+    "mtime": 1787499492.884547,
+    "ast_hash": "d0e9d58a0a0aee7a5f4e1b5f3d2888bd",
+    "semantic_hash": "d0e9d58a0a0aee7a5f4e1b5f3d2888bd"
   },
-  "life-docs/REMINDERS.md": {
-    "mtime": 1786810266.587813,
-    "ast_hash": "47457f4d5d008af8620aa899196c304c",
-    "semantic_hash": "47457f4d5d008af8620aa899196c304c"
+  "backend/app/modules/gitlab_ops/gitlab_client.py": {
+    "mtime": 1787641122.0806851,
+    "ast_hash": "a5fc7ce409e55b15196600538ad533f3",
+    "semantic_hash": "a5fc7ce409e55b15196600538ad533f3"
+  },
+  "backend/app/modules/gitlab_ops/models.py": {
+    "mtime": 1787640636.1391551,
+    "ast_hash": "d36c387636b94a96b166578de157d65e",
+    "semantic_hash": "d36c387636b94a96b166578de157d65e"
+  },
+  "backend/app/modules/gitlab_ops/repositories.py": {
+    "mtime": 1787645371.9411736,
+    "ast_hash": "405ed0b35d8b63e717df6546ea6f33ac",
+    "semantic_hash": "405ed0b35d8b63e717df6546ea6f33ac"
+  },
+  "backend/app/modules/gitlab_ops/router.py": {
+    "mtime": 1787645783.0798287,
+    "ast_hash": "d9805970f3db4db31ee7f76c11e5ec73",
+    "semantic_hash": "d9805970f3db4db31ee7f76c11e5ec73"
+  },
+  "backend/app/modules/gitlab_ops/schemas.py": {
+    "mtime": 1787640431.1800876,
+    "ast_hash": "186a2f7b1f0612e8894dbbd2e36f48db",
+    "semantic_hash": "186a2f7b1f0612e8894dbbd2e36f48db"
+  },
+  "backend/app/modules/gitlab_ops/services.py": {
+    "mtime": 1787645911.9838207,
+    "ast_hash": "18e9b00815e363f065237c7e0105d407",
+    "semantic_hash": "18e9b00815e363f065237c7e0105d407"
+  },
+  "backend/app/modules/life/__init__.py": {
+    "mtime": 1786813970.6518292,
+    "ast_hash": "1af860f9f33a38d6da06462e017388e5",
+    "semantic_hash": "1af860f9f33a38d6da06462e017388e5"
+  },
+  "backend/app/modules/life/api.py": {
+    "mtime": 1787486453.9127307,
+    "ast_hash": "c684f16d5052c72c01c611e086debda6",
+    "semantic_hash": "c684f16d5052c72c01c611e086debda6"
+  },
+  "backend/app/modules/life/bot.py": {
+    "mtime": 1787486662.3380837,
+    "ast_hash": "8affe59440ea4ad6e7eb4527a564514b",
+    "semantic_hash": "8affe59440ea4ad6e7eb4527a564514b"
+  },
+  "backend/app/modules/life/models.py": {
+    "mtime": 1787486507.7775972,
+    "ast_hash": "592344974ef5d07b765b3accdba65234",
+    "semantic_hash": "592344974ef5d07b765b3accdba65234"
+  },
+  "backend/app/modules/life/repositories.py": {
+    "mtime": 1787486320.6775873,
+    "ast_hash": "0ef4994d12463c90f63f86170c7e4ee9",
+    "semantic_hash": "0ef4994d12463c90f63f86170c7e4ee9"
+  },
+  "backend/app/modules/life/schemas.py": {
+    "mtime": 1787486700.2296934,
+    "ast_hash": "b9a27547883cbc9f4f41653bb4d438cc",
+    "semantic_hash": "b9a27547883cbc9f4f41653bb4d438cc"
+  },
+  "backend/app/modules/life/services.py": {
+    "mtime": 1787486724.822089,
+    "ast_hash": "879c003c5bb8dd1f983ee78ec6178d83",
+    "semantic_hash": "879c003c5bb8dd1f983ee78ec6178d83"
+  },
+  "backend/app/platform/auth/__init__.py": {
+    "mtime": 1786811870.7785277,
+    "ast_hash": "ea4158e5e46529a8ad70ba1c4b7ad0f4",
+    "semantic_hash": "ea4158e5e46529a8ad70ba1c4b7ad0f4"
+  },
+  "backend/app/platform/auth/dependencies.py": {
+    "mtime": 1786812129.8680618,
+    "ast_hash": "2b05574af3b6d9ab11eac71071b9365d",
+    "semantic_hash": "2b05574af3b6d9ab11eac71071b9365d"
+  },
+  "backend/app/platform/auth/models.py": {
+    "mtime": 1786811870.7785277,
+    "ast_hash": "d3c72b3e22a51fc4e2d55c5b91cd6a22",
+    "semantic_hash": "d3c72b3e22a51fc4e2d55c5b91cd6a22"
+  },
+  "backend/app/platform/auth/repositories.py": {
+    "mtime": 1786812129.8670619,
+    "ast_hash": "9a4d06051faaf7596fe39c8b00176168",
+    "semantic_hash": "9a4d06051faaf7596fe39c8b00176168"
+  },
+  "backend/app/platform/auth/schemas.py": {
+    "mtime": 1786811983.9176345,
+    "ast_hash": "21e3f3da6fe7dae72ba27a701368fbd9",
+    "semantic_hash": "21e3f3da6fe7dae72ba27a701368fbd9"
+  },
+  "backend/app/platform/auth/services.py": {
+    "mtime": 1786811931.008117,
+    "ast_hash": "ec80c18743489f9ed187bf1233b9aac9",
+    "semantic_hash": "ec80c18743489f9ed187bf1233b9aac9"
+  },
+  "backend/migrations/versions/20260815_0004_platform_auth_sessions.py": {
+    "mtime": 1786811951.9043212,
+    "ast_hash": "f534457af834c5a55bbad29b37710a7f",
+    "semantic_hash": "f534457af834c5a55bbad29b37710a7f"
+  },
+  "backend/migrations/versions/20260816_0005_life_profile_goals_destinations.py": {
+    "mtime": 1786814338.627867,
+    "ast_hash": "712436a16931b066bb7a949751f1d4c8",
+    "semantic_hash": "712436a16931b066bb7a949751f1d4c8"
+  },
+  "backend/migrations/versions/20260816_0006_life_planner_reminders.py": {
+    "mtime": 1786814650.2921548,
+    "ast_hash": "ae3e4b7d29d4e3ae2cf01806a4e24303",
+    "semantic_hash": "ae3e4b7d29d4e3ae2cf01806a4e24303"
+  },
+  "backend/migrations/versions/20260816_0007_life_nutrition_weight_fitness.py": {
+    "mtime": 1786815814.5914836,
+    "ast_hash": "483725b9ea4fdfd4679c0f116c19c742",
+    "semantic_hash": "483725b9ea4fdfd4679c0f116c19c742"
+  },
+  "backend/migrations/versions/20260816_0008_life_grocery.py": {
+    "mtime": 1786815972.3337154,
+    "ast_hash": "bcf03610b01f662df11834653249edf5",
+    "semantic_hash": "bcf03610b01f662df11834653249edf5"
+  },
+  "backend/migrations/versions/20260823_0009_grocery_list_cadence.py": {
+    "mtime": 1787481457.9744196,
+    "ast_hash": "4437f4c1b71c31dd17d88218e42f08e3",
+    "semantic_hash": "4437f4c1b71c31dd17d88218e42f08e3"
+  },
+  "backend/migrations/versions/20260823_0010_grocery_auto_rotation.py": {
+    "mtime": 1787484614.9370801,
+    "ast_hash": "45c1dead0cf3478c078326c99834a960",
+    "semantic_hash": "45c1dead0cf3478c078326c99834a960"
+  },
+  "backend/migrations/versions/20260823_0011_goal_recommendations.py": {
+    "mtime": 1787487742.694454,
+    "ast_hash": "8629e54f820989a60314534f8f72913d",
+    "semantic_hash": "8629e54f820989a60314534f8f72913d"
+  },
+  "backend/migrations/versions/20260823_0012_gitlab_ops_bot.py": {
+    "mtime": 1787640887.5983691,
+    "ast_hash": "43d7fd6ecc3badc82128f228b2b858fe",
+    "semantic_hash": "43d7fd6ecc3badc82128f228b2b858fe"
+  },
+  "backend/migrations/versions/20260825_0013_gitlab_manual_script_runner.py": {
+    "mtime": 1787640887.5983691,
+    "ast_hash": "4050e850375c19b395942b5a3186de5a",
+    "semantic_hash": "4050e850375c19b395942b5a3186de5a"
+  },
+  "frontend/package.json": {
+    "mtime": 1787478569.8938768,
+    "ast_hash": "efd516ce92d73ea91050a91b28c9695d",
+    "semantic_hash": "efd516ce92d73ea91050a91b28c9695d"
+  },
+  "frontend/src/App.tsx": {
+    "mtime": 1786816080.8482509,
+    "ast_hash": "c7177b1a44c935eb70da1f9ec295fd73",
+    "semantic_hash": "c7177b1a44c935eb70da1f9ec295fd73"
+  },
+  "frontend/src/app/api/auth.ts": {
+    "mtime": 1786812751.7671695,
+    "ast_hash": "ecb342e6e7e566c3cafacb191eacee92",
+    "semantic_hash": "ecb342e6e7e566c3cafacb191eacee92"
+  },
+  "frontend/src/app/api/client.ts": {
+    "mtime": 1786818722.0217,
+    "ast_hash": "94bc2383ce6040ba0f9840ecee0e7c4c",
+    "semantic_hash": "94bc2383ce6040ba0f9840ecee0e7c4c"
+  },
+  "frontend/src/app/api/life.ts": {
+    "mtime": 1787486827.44899,
+    "ast_hash": "4204648dcf333aa3d16f7ee4e4374b07",
+    "semantic_hash": "4204648dcf333aa3d16f7ee4e4374b07"
+  },
+  "frontend/src/app/auth/useAuthBootstrap.ts": {
+    "mtime": 1786818722.0226998,
+    "ast_hash": "279d685119a4e88f539adc8935e9b5b4",
+    "semantic_hash": "279d685119a4e88f539adc8935e9b5b4"
+  },
+  "frontend/src/app/providers/QueryProvider.tsx": {
+    "mtime": 1786812751.7671695,
+    "ast_hash": "7352609fdb2dbaec008b073c8b968a78",
+    "semantic_hash": "7352609fdb2dbaec008b073c8b968a78"
+  },
+  "frontend/src/app/router/AppRouter.tsx": {
+    "mtime": 1786816080.8492508,
+    "ast_hash": "62a2af7043cc79e59a57943e3b4cb5b0",
+    "semantic_hash": "62a2af7043cc79e59a57943e3b4cb5b0"
+  },
+  "frontend/src/app/telegram/webapp.ts": {
+    "mtime": 1786812751.7667816,
+    "ast_hash": "e19d66c0eedf73c08695496a48b125a7",
+    "semantic_hash": "e19d66c0eedf73c08695496a48b125a7"
+  },
+  "frontend/src/main.tsx": {
+    "mtime": 1786812751.767859,
+    "ast_hash": "45244586611d4f07745ecbf8c36538f6",
+    "semantic_hash": "45244586611d4f07745ecbf8c36538f6"
+  },
+  "frontend/src/modules/life/GroceryPage.tsx": {
+    "mtime": 1787485014.6835597,
+    "ast_hash": "5d82269f582f83496da38761696f83b0",
+    "semantic_hash": "5d82269f582f83496da38761696f83b0"
+  },
+  "frontend/src/modules/life/LifeShell.tsx": {
+    "mtime": 1787480574.4444513,
+    "ast_hash": "73cc87adbcbc2918c10aca0f2c05d8b4",
+    "semantic_hash": "73cc87adbcbc2918c10aca0f2c05d8b4"
+  },
+  "frontend/src/modules/life/LifeUI.tsx": {
+    "mtime": 1787480849.534458,
+    "ast_hash": "6cd6a3579a2c127772ecbc399f2315d3",
+    "semantic_hash": "6cd6a3579a2c127772ecbc399f2315d3"
+  },
+  "frontend/src/modules/life/PlannerPage.tsx": {
+    "mtime": 1787484661.5608504,
+    "ast_hash": "6362db7f4833ee3ad11b44f3691561f7",
+    "semantic_hash": "6362db7f4833ee3ad11b44f3691561f7"
+  },
+  "frontend/src/modules/life/ProgressPage.tsx": {
+    "mtime": 1787477706.4282053,
+    "ast_hash": "e31c8ecc8552cb7927019fc40569b44a",
+    "semantic_hash": "e31c8ecc8552cb7927019fc40569b44a"
+  },
+  "frontend/src/modules/life/SettingsPage.tsx": {
+    "mtime": 1787487007.770388,
+    "ast_hash": "2054ca84796226a68e7f145dc0e2e577",
+    "semantic_hash": "2054ca84796226a68e7f145dc0e2e577"
+  },
+  "frontend/src/modules/life/TodayPage.tsx": {
+    "mtime": 1787480574.4424515,
+    "ast_hash": "01b8011c036d7bffdf52ee32085153fe",
+    "semantic_hash": "01b8011c036d7bffdf52ee32085153fe"
+  },
+  "frontend/src/modules/life/icons.tsx": {
+    "mtime": 1787477350.5110137,
+    "ast_hash": "2785b65f289630d67b1d62c173b58568",
+    "semantic_hash": "2785b65f289630d67b1d62c173b58568"
+  },
+  "frontend/src/shared/components/AppState.tsx": {
+    "mtime": 1786812751.7671695,
+    "ast_hash": "6de1506aaf9db83b328468f2a224b65b",
+    "semantic_hash": "6de1506aaf9db83b328468f2a224b65b"
+  },
+  "frontend/src/vite-env.d.ts": {
+    "mtime": 1786812751.7667816,
+    "ast_hash": "0352474ba2918efe13895edbc3780d94",
+    "semantic_hash": "0352474ba2918efe13895edbc3780d94"
+  },
+  "frontend/tsconfig.app.json": {
+    "mtime": 1786812751.766041,
+    "ast_hash": "33128b67dbdfd0c8b66d2310da7c523a",
+    "semantic_hash": "33128b67dbdfd0c8b66d2310da7c523a"
+  },
+  "frontend/tsconfig.json": {
+    "mtime": 1786812751.7658787,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "frontend/tsconfig.node.json": {
+    "mtime": 1786812751.7661602,
+    "ast_hash": "e706dbb850c46b32d330c203fab47836",
+    "semantic_hash": "e706dbb850c46b32d330c203fab47836"
+  },
+  "frontend/vite.config.ts": {
+    "mtime": 1787478573.9719424,
+    "ast_hash": "0fe91d4fba00f482a09ebea0cb04236c",
+    "semantic_hash": "0fe91d4fba00f482a09ebea0cb04236c"
+  },
+  ".gitlab-ci.yml": {
+    "mtime": 1787639911.5951684,
+    "ast_hash": "b6fdb182d9d217e4547415847ed50e61",
+    "semantic_hash": "b6fdb182d9d217e4547415847ed50e61"
+  },
+  "backend/docker/README.md": {
+    "mtime": 1786809964.5181046,
+    "ast_hash": "18b020eff74d9950285323f37d11558d",
+    "semantic_hash": "18b020eff74d9950285323f37d11558d"
+  },
+  "docs/gitlab-ops-bot-plan.md": {
+    "mtime": 1787498738.7804184,
+    "ast_hash": "7d94de8ab111f3ff8b38126dd2d13502",
+    "semantic_hash": "7d94de8ab111f3ff8b38126dd2d13502"
+  },
+  "docs/gitlab-ops-bot-runbook.md": {
+    "mtime": 1787640690.7066233,
+    "ast_hash": "b853b88d279426b4d877b84e5de3d400",
+    "semantic_hash": "b853b88d279426b4d877b84e5de3d400"
+  },
+  "docs/gitlab-ops-manual-script-runner-plan.md": {
+    "mtime": 1787639911.5961683,
+    "ast_hash": "f934c07969e22ef3001c1de0dff50635",
+    "semantic_hash": "f934c07969e22ef3001c1de0dff50635"
+  },
+  "docs/gitlab-ops-project-selector-plan.md": {
+    "mtime": 1787645114.9803655,
+    "ast_hash": "f78e4e396515d34471c3dd2ad18401f3",
+    "semantic_hash": "f78e4e396515d34471c3dd2ad18401f3"
+  },
+  "docs/panduan-penggunaan-life-bot.md": {
+    "mtime": 1787485427.2582066,
+    "ast_hash": "18c11bcef1ce05783e2cf03a9d0cba8a",
+    "semantic_hash": "18c11bcef1ce05783e2cf03a9d0cba8a"
+  },
+  "frontend/README.md": {
+    "mtime": 1786818738.4899333,
+    "ast_hash": "269dd3af90a1f272de330e8aff467888",
+    "semantic_hash": "269dd3af90a1f272de330e8aff467888"
+  },
+  "frontend/index.html": {
+    "mtime": 1786812751.7663672,
+    "ast_hash": "cdbc778333cee32335f91f775e28ab35",
+    "semantic_hash": "cdbc778333cee32335f91f775e28ab35"
   }
 }

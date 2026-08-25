@@ -14,6 +14,7 @@ from app.modules.life import models as life_models
 from app.modules.sample_bot import models as sample_models
 from app.modules.finance import models as finance_models
 from app.modules.islamic import models as islamic_models
+from app.modules.gitlab_ops import models as gitlab_ops_models
 from app.platform.bots import models as bot_models
 from app.platform.updates import models as update_models
 from app.platform.users import models as user_models
@@ -23,6 +24,7 @@ _MODELS = (
     life_models,
     finance_models,
     islamic_models,
+    gitlab_ops_models,
     sample_models,
     bot_models,
     update_models,
