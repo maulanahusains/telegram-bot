@@ -13,7 +13,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 FROM dependencies AS build
 
 COPY . .
-RUN npm run build
+RUN npm run build:bundle
 
 FROM nginx:1.27-alpine AS production
 

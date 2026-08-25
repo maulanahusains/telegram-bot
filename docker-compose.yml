@@ -132,6 +132,8 @@ services:
       target: development
     environment:
       VITE_API_PROXY_TARGET: http://app-dev:8000
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
     volumes:
       - ./frontend:/app
