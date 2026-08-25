@@ -121,8 +121,14 @@ class GitlabOpsRouter:
             await self._send(context.chat_id, await self._service.show_pipelines(context))
         elif command == "/deploy":
             await self._deploy(args, context)
+        elif command == "/gitlab" and args.lower() == "subscribe":
+            await self._show_selector(context, SELECTOR_SUBSCRIBE)
         elif command == "/gitlab":
-            await self._send(context.chat_id, "Setup identity dan token GitLab hanya dilakukan di private chat. Gunakan /gitlab di chat pribadi bot.")
+            await self._send(context.chat_id, "Setup identity dan token GitLab hanya dilakukan di private chat. Di group, gunakan /gitlab subscribe untuk menerima notifikasi project ini.")
+        else:
+            state = await self._state.get_state(context.bot_user_id)
+            if state.state == "gitlab_subscribe_input":
+                await self._handle_state(text, context, state.state, dict(state.data), state.version)
 
     async def _handle_state(self, text: str, context: UserContext, state: str, data: dict[str, Any], version: int) -> None:
         if state in {"gitlab_rule_input", "gitlab_subscribe_input", "gitlab_grant_user"} and data.get("chat_id") != context.chat_id:
