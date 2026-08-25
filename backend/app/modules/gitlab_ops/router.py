@@ -8,6 +8,7 @@ from app.core.telegram_client import TelegramBotClient
 from app.modules.gitlab_ops.gitlab_client import normalize_gitlab_url
 from app.modules.gitlab_ops.schemas import ManualScriptMappingInput, PromotionRuleInput, SubscriptionInput
 from app.modules.gitlab_ops.services import (
+    CallbackClaim,
     CallbackReply,
     GitlabOpsService,
     SELECTOR_BRANCHES,
@@ -338,19 +339,16 @@ class GitlabOpsRouter:
 
     async def _handle_callback(self, callback_id: str, data: str | None, context: UserContext, message_id: int | None = None) -> None:
         try:
-            await self._telegram.answer_callback_query(callback_query_id=callback_id)
-            reply = await self._service.handle_callback(context, data or "", edit_message_id=message_id)
+            prepared = await self._service.claim_callback(context, data or "", edit_message_id=message_id)
+            if isinstance(prepared, CallbackClaim):
+                await self._telegram.answer_callback_query(callback_query_id=callback_id)
+                await self._apply_callback_reply(await self._service.loading_reply(prepared, data or ""), context)
+                reply = await self._service.execute_claimed_callback(context, prepared)
+            else:
+                await self._telegram.answer_callback_query(callback_query_id=callback_id, text=prepared.callback_text if isinstance(prepared, CallbackReply) else None)
+                reply = prepared
             if isinstance(reply, CallbackReply):
-                if reply.next_state is not None:
-                    current = await self._state.get_state(context.bot_user_id)
-                    await self._state.set_state(context.bot_user_id, state=reply.next_state, data=reply.next_state_data or {}, expected_version=current.version)
-                if reply.edit_message_id is not None:
-                    try:
-                        await self._telegram.edit_message(chat_id=context.chat_id, message_id=reply.edit_message_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
-                    except Exception:
-                        await self._telegram.send_message(chat_id=context.chat_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
-                else:
-                    await self._telegram.send_message(chat_id=context.chat_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
+                await self._apply_callback_reply(reply, context)
             else:
                 await self._send(context.chat_id, reply)
         except Exception as error:
@@ -359,6 +357,26 @@ class GitlabOpsRouter:
                 error_type=type(error).__name__,
             )
             await self._send(context.chat_id, "Aksi GitLab gagal diproses.")
+
+    async def _apply_callback_reply(self, reply: CallbackReply, context: UserContext) -> None:
+        if reply.next_state is not None:
+            current = await self._state.get_state(context.bot_user_id)
+            await self._state.set_state(context.bot_user_id, state=reply.next_state, data=reply.next_state_data or {}, expected_version=current.version)
+        if reply.edit_message_id is not None and reply.edit_markup_only:
+            try:
+                await self._telegram.edit_message_reply_markup(chat_id=context.chat_id, message_id=reply.edit_message_id, reply_markup=reply.reply_markup)
+            except Exception:
+                await logger.aexception("gitlab_callback_markup_update_failed", message_id=reply.edit_message_id)
+        elif reply.edit_message_id is not None and reply.text is not None:
+            try:
+                await self._telegram.edit_message(chat_id=context.chat_id, message_id=reply.edit_message_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
+            except Exception:
+                if reply.send_message:
+                    await self._telegram.send_message(chat_id=context.chat_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
+                return
+        should_send = reply.send_message and (reply.edit_message_id is None or reply.edit_markup_only)
+        if should_send and reply.text is not None:
+            await self._telegram.send_message(chat_id=context.chat_id, text=reply.text, parse_mode="HTML", reply_markup=reply.reply_markup)
 
     async def _show_selector(self, context: UserContext, flow: str) -> None:
         try:

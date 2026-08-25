@@ -109,8 +109,9 @@ class TelegramBotClient:
         }
         if parse_mode is not None:
             payload["parse_mode"] = parse_mode
-        if reply_markup is not None:
-            payload["reply_markup"] = reply_markup
+        # Telegram otherwise keeps the old inline keyboard. Callers need an
+        # explicit empty markup when an action has finished or is processing.
+        payload["reply_markup"] = reply_markup or {"inline_keyboard": []}
         return await self._typed_request(
             "editMessageText",
             payload,

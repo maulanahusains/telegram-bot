@@ -67,11 +67,24 @@ SELECTOR_PAGE_SIZE = 10
 
 @dataclass(frozen=True, slots=True)
 class CallbackReply:
-    text: str
+    text: str | None
     reply_markup: dict[str, Any] | None = None
     edit_message_id: int | None = None
     next_state: str | None = None
     next_state_data: dict[str, Any] | None = None
+    edit_markup_only: bool = False
+    send_message: bool = True
+    callback_text: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CallbackClaim:
+    action: GitlabCallbackActionModel
+    project: GitlabProjectModel
+    instance: GitlabInstanceModel
+    identity: GitlabUserIdentityModel
+    edit_message_id: int | None
+    original_reply_markup: dict[str, Any] | None
 
 
 class GitlabOpsService:
@@ -706,13 +719,15 @@ class GitlabOpsService:
             session.add(GitlabCallbackActionModel(action_key=key, action_type=action_type, project_id=project_id, target=target, expected_sha=expected_sha, requester_bot_user_id=bot_user_id, chat_id=chat_row_id, expires_at=utc_now() + timedelta(minutes=15)))
         return f"glo:v1:{key}"
 
-    async def handle_callback(self, context: UserContext, callback_data: str, *, edit_message_id: int | None = None) -> str | CallbackReply:
+    async def claim_callback(self, context: UserContext, callback_data: str, *, edit_message_id: int | None = None) -> str | CallbackReply | CallbackClaim:
         if not callback_data.startswith("glo:v1:"):
             return "Aksi tidak dikenali."
         key = callback_data.removeprefix("glo:v1:")
+        claim: CallbackClaim | None = None
         async with self.database.transaction() as session:
             action = await self.repository.callback(session, key)
-            if action is None or action.consumed_at is not None or action.expires_at <= utc_now():
+            now = utc_now()
+            if action is None or action.consumed_at is not None or action.expires_at <= now:
                 return "Aksi sudah kedaluwarsa atau sudah dipakai."
             if action.requester_bot_user_id != context.bot_user_id:
                 return "Aksi ini bukan milik requester tersebut."
@@ -752,9 +767,21 @@ class GitlabOpsService:
                 if permission is None or instance is None:
                     await self.repository.audit(session, action=f"callback:{action.action_type}", result="denied", bot_user_id=context.bot_user_id, project_id=project.id, metadata_={"reason": "permission"})
                     return "Kamu tidak berwenang menjalankan aksi ini."
-                action.consumed_at = utc_now()
+                if runner_action:
+                    if action.processing_at is not None and action.processing_at > now - timedelta(minutes=2):
+                        return CallbackReply(text=None, send_message=False, callback_text="⏳ Workflow masih diproses. Tunggu sampai selesai.")
+                    action.processing_at = now
+                    original_markup = action.target.get("reply_markup") if isinstance(action.target.get("reply_markup"), dict) else None
+                    if original_markup is None and edit_message_id is not None:
+                        notification = await self.repository.notification_by_message(session, project_id=project.id, chat_id=chat.id, message_id=edit_message_id)
+                        original_markup = notification.reply_markup if notification is not None else None
+                    claim = CallbackClaim(action=action, project=project, instance=instance, identity=identity, edit_message_id=edit_message_id, original_reply_markup=original_markup)
+                else:
+                    action.consumed_at = now
         if selector_target is not None:
             return await self._handle_selector(context, selector_target, edit_message_id)
+        if claim is not None:
+            return claim
         try:
             result = await self._execute_callback(context, action, project, instance, identity)
             await self._audit(context, project.id, f"callback:{action.action_type}", "success", identity_id=identity.id, merge_request_iid=int(action.target.get("iid")) if action.target.get("iid") else None, merge_request_sha=action.expected_sha)
@@ -767,6 +794,58 @@ class GitlabOpsService:
             if error.status_code == 409:
                 return "GitLab menolak karena state/HEAD SHA berubah. Muat ulang MR dari /mr sebelum mencoba lagi."
             return f"GitLab menolak aksi ini (HTTP {error.status_code})."
+
+    async def execute_claimed_callback(self, context: UserContext, claim: CallbackClaim) -> str | CallbackReply:
+        action = claim.action
+        try:
+            result = await self._execute_callback(context, action, claim.project, claim.instance, claim.identity)
+            if isinstance(result, str):
+                await self._release_callback(action.id)
+                await self._audit(context, claim.project.id, f"callback:{action.action_type}", "failed", identity_id=claim.identity.id, metadata={"reason": result[:300]})
+                return _manual_failure_reply(claim, result)
+            await self._finalize_callback(action.id)
+            await self._audit(context, claim.project.id, f"callback:{action.action_type}", "success", identity_id=claim.identity.id, merge_request_iid=int(action.target.get("iid")) if action.target.get("iid") else None, merge_request_sha=action.expected_sha)
+            if result.edit_message_id is None and claim.edit_message_id is not None:
+                return _with_edit_message(result, claim.edit_message_id)
+            return result
+        except GitlabApiError as error:
+            await self._release_callback(action.id)
+            await self._audit(context, claim.project.id, f"callback:{action.action_type}", f"gitlab_{error.status_code}", identity_id=claim.identity.id, merge_request_iid=int(action.target.get("iid")) if action.target.get("iid") else None, merge_request_sha=action.expected_sha, metadata={"status_code": error.status_code})
+            if error.status_code == 401:
+                await self._disable_identity(claim.identity.id)
+            return _manual_failure_reply(claim, _gitlab_error_text(error))
+        except Exception as error:
+            await self._release_callback(action.id)
+            await self._audit(context, claim.project.id, f"callback:{action.action_type}", "failed", identity_id=claim.identity.id, metadata={"error_type": type(error).__name__})
+            return _manual_failure_reply(claim, f"Manual run gagal: {_escape(str(error)[:400])}")
+
+    async def handle_callback(self, context: UserContext, callback_data: str, *, edit_message_id: int | None = None) -> str | CallbackReply:
+        prepared = await self.claim_callback(context, callback_data, edit_message_id=edit_message_id)
+        if isinstance(prepared, CallbackClaim):
+            return await self.execute_claimed_callback(context, prepared)
+        return prepared
+
+    async def loading_reply(self, claim: CallbackClaim, callback_data: str) -> CallbackReply:
+        return CallbackReply(
+            text=None,
+            reply_markup=_loading_markup(claim.original_reply_markup, callback_data),
+            edit_message_id=claim.edit_message_id,
+            edit_markup_only=True,
+            send_message=False,
+        )
+
+    async def _finalize_callback(self, action_id: int) -> None:
+        async with self.database.transaction() as session:
+            action = await session.get(GitlabCallbackActionModel, action_id, with_for_update=True)
+            if action is not None:
+                action.processing_at = None
+                action.consumed_at = utc_now()
+
+    async def _release_callback(self, action_id: int) -> None:
+        async with self.database.transaction() as session:
+            action = await session.get(GitlabCallbackActionModel, action_id, with_for_update=True)
+            if action is not None and action.consumed_at is None:
+                action.processing_at = None
 
     async def _execute_callback(self, context: UserContext, action: GitlabCallbackActionModel, project: GitlabProjectModel, instance: GitlabInstanceModel, identity: GitlabUserIdentityModel) -> str | CallbackReply:
         client = self._client(instance, identity)
@@ -823,10 +902,15 @@ class GitlabOpsService:
             return "Aksi stale: branch sudah menerima push baru. Gunakan tombol dari notifikasi terbaru."
         if action.action_type in (ACTION_RUN_MANUAL_SCRIPT, ACTION_APPROVE_AND_RUN) and branch.protected:
             confirmation_type = ACTION_CONFIRM_MANUAL_SCRIPT if action.action_type == ACTION_RUN_MANUAL_SCRIPT else ACTION_CONFIRM_APPROVE_AND_RUN
-            key = await self.create_callback(action_type=confirmation_type, project_id=project.id, target=dict(action.target), expected_sha=action.expected_sha, bot_user_id=context.bot_user_id, chat_row_id=action.chat_id)
+            key = f"glo:v1:{secrets.token_urlsafe(12)}"
+            confirmation_markup = action_markup([(f"⚠️ Confirm run {mapping.telegram_label}", key)]) or {"inline_keyboard": []}
+            confirmation_target = dict(action.target)
+            confirmation_target["reply_markup"] = confirmation_markup
+            async with self.database.transaction() as session:
+                session.add(GitlabCallbackActionModel(action_key=key.removeprefix("glo:v1:"), action_type=confirmation_type, project_id=project.id, target=confirmation_target, expected_sha=action.expected_sha, requester_bot_user_id=context.bot_user_id, chat_id=action.chat_id, expires_at=utc_now() + timedelta(minutes=15)))
             return CallbackReply(
                 text=f"Branch <code>{_escape(mapping.target_branch)}</code> protected. Konfirmasi kedua diperlukan untuk menjalankan <b>{_escape(mapping.telegram_label)}</b>.",
-                reply_markup=action_markup([(f"⚠️ Confirm run {mapping.telegram_label}", key)]),
+                reply_markup=confirmation_markup,
             )
         if action.action_type in (ACTION_APPROVE_AND_RUN, ACTION_CONFIRM_APPROVE_AND_RUN):
             iid = int(action.target["iid"])
@@ -865,7 +949,7 @@ class GitlabOpsService:
             run.pipeline_id = pipeline.id
             run.job_id = int(job["id"])
             run.job_url = played.get("web_url") or job.get("web_url")
-            return CallbackReply(text=_manual_run_text(project, mapping, run), edit_message_id=origin_message_id)
+            return CallbackReply(text=_manual_run_text(project, mapping, run), reply_markup={"inline_keyboard": []}, edit_message_id=origin_message_id)
         except GitlabApiError as error:
             await self._finish_manual_run(run.id, status="failed", failure_reason=f"GitLab HTTP {error.status_code}: {str(error)[:300]}")
             raise
@@ -873,9 +957,8 @@ class GitlabOpsService:
     async def _origin_message_id(self, project_id: int, chat_id: int, resource_id: str | None, resource_type: str) -> int | None:
         if not resource_id:
             return None
-        from app.modules.gitlab_ops.models import GitlabNotificationMessageModel
         async with self.database.session() as session:
-            message = await session.scalar(select(GitlabNotificationMessageModel).where(GitlabNotificationMessageModel.project_id == project_id, GitlabNotificationMessageModel.telegram_chat_id == chat_id, GitlabNotificationMessageModel.resource_type == resource_type, GitlabNotificationMessageModel.external_resource_id == resource_id))
+            message = await self.repository.notification(session, project_id=project_id, chat_id=chat_id, resource_type=resource_type, external_resource_id=resource_id)
             return message.telegram_message_id if message else None
 
     async def _finish_manual_run(self, run_id: int, *, status: str, failure_reason: str | None = None, pipeline_id: int | None = None, job_id: int | None = None, job_url: str | None = None) -> None:
@@ -922,6 +1005,7 @@ class GitlabOpsService:
                 message = await self.repository.notification(session, project_id=project.id, chat_id=chat.id, resource_type=resource_type, external_resource_id=resource_id)
                 if message and message.last_event_fingerprint == fingerprint:
                     continue
+                was_running = category == "pipeline" and message is not None and message.last_status == "running"
                 actions: list[tuple[str, str]] = []
                 if category == "merge_request":
                     authorized = await session.scalar(select(GitlabProjectPermissionModel).where(GitlabProjectPermissionModel.project_id == project.id, GitlabProjectPermissionModel.allowed_chat_id.is_(None) | (GitlabProjectPermissionModel.allowed_chat_id == chat.id), GitlabProjectPermissionModel.active.is_(True)).order_by(GitlabProjectPermissionModel.bot_user_id))
@@ -951,7 +1035,13 @@ class GitlabOpsService:
                             actions.append((f"Run {mapping.telegram_label}", action_key))
                 markup = action_markup(actions)
             sent: SentMessage
-            if message:
+            if was_running and message is not None:
+                sent = await telegram.send_message(chat_id=chat.telegram_chat_id, text=text, parse_mode="HTML", reply_markup=markup)
+                try:
+                    await telegram.delete_message(chat_id=chat.telegram_chat_id, message_id=message.telegram_message_id)
+                except Exception:
+                    await logger.aexception("gitlab_notification_delete_failed", project_id=project.id, chat_id=chat.telegram_chat_id, message_id=message.telegram_message_id)
+            elif message:
                 try:
                     sent = await telegram.edit_message(chat_id=chat.telegram_chat_id, message_id=message.telegram_message_id, text=text, parse_mode="HTML", reply_markup=markup)
                 except Exception:
@@ -959,7 +1049,7 @@ class GitlabOpsService:
             else:
                 sent = await telegram.send_message(chat_id=chat.telegram_chat_id, text=text, parse_mode="HTML", reply_markup=markup)
             async with self.database.transaction() as session:
-                await self.repository.save_notification(session, project_id=project.id, chat_id=chat.id, resource_type=resource_type, external_resource_id=resource_id, message_id=sent.message_id, fingerprint=fingerprint)
+                await self.repository.save_notification(session, project_id=project.id, chat_id=chat.id, resource_type=resource_type, external_resource_id=resource_id, message_id=sent.message_id, fingerprint=fingerprint, status=status or None, reply_markup=markup)
 
     async def _process_job_event(self, telegram: TelegramBotClient, project: GitlabProjectModel, payload: dict[str, Any]) -> None:
         attrs = payload.get("object_attributes") or payload
@@ -980,6 +1070,7 @@ class GitlabOpsService:
                 return
             if job_name is not None and str(job_name) != mapping.job_name:
                 return
+            was_terminal = run.status in {"success", "failed", "canceled", "skipped"}
             run.status = status
             run.job_id = job_id or run.job_id
             run.pipeline_id = pipeline_id or run.pipeline_id
@@ -987,11 +1078,20 @@ class GitlabOpsService:
             run.failure_reason = _job_failure_reason(attrs) if status in {"failed", "canceled"} else None
             message_id = run.origin_message_id
             text = _manual_run_text(project, mapping, run)
-        if message_id is not None:
-            try:
-                await telegram.edit_message(chat_id=chat.telegram_chat_id, message_id=message_id, text=text, parse_mode="HTML")
-            except Exception:
-                pass
+            if was_terminal:
+                return
+            if status in {"success", "failed", "canceled", "skipped"}:
+                sent = await telegram.send_message(chat_id=chat.telegram_chat_id, text=text, parse_mode="HTML", reply_markup={"inline_keyboard": []})
+                if message_id is not None:
+                    try:
+                        await telegram.delete_message(chat_id=chat.telegram_chat_id, message_id=message_id)
+                    except Exception:
+                        await logger.aexception("gitlab_manual_run_origin_delete_failed", project_id=project.id, chat_id=chat.telegram_chat_id, message_id=message_id, result_message_id=sent.message_id)
+            elif message_id is not None:
+                try:
+                    await telegram.edit_message(chat_id=chat.telegram_chat_id, message_id=message_id, text=text, parse_mode="HTML", reply_markup={"inline_keyboard": []})
+                except Exception:
+                    pass
 
     async def _create_callback_in_session(self, session, *, action_type: str, project_id: int | None, target: dict[str, Any], expected_sha: str | None, bot_user_id: int, chat_row_id: int) -> str:
         key = secrets.token_urlsafe(12)
@@ -1110,8 +1210,37 @@ def selector_label(flow: str) -> str:
 
 def _with_edit_message(reply: CallbackReply | str, message_id: int | None) -> CallbackReply | str:
     if isinstance(reply, CallbackReply):
-        return CallbackReply(text=reply.text, reply_markup=reply.reply_markup, edit_message_id=message_id, next_state=reply.next_state, next_state_data=reply.next_state_data)
+        return CallbackReply(text=reply.text, reply_markup=reply.reply_markup, edit_message_id=message_id, next_state=reply.next_state, next_state_data=reply.next_state_data, edit_markup_only=reply.edit_markup_only, send_message=reply.send_message, callback_text=reply.callback_text)
     return reply
+
+
+def _loading_markup(reply_markup: dict[str, Any] | None, callback_data: str) -> dict[str, Any] | None:
+    if reply_markup is None:
+        return None
+    markup = json.loads(json.dumps(reply_markup))
+    for row in markup.get("inline_keyboard", []):
+        for button in row:
+            if button.get("callback_data") == callback_data:
+                label = str(button.get("text") or "aksi")
+                button["text"] = f"⏳ Menjalankan {label}"
+    return markup
+
+
+def _manual_failure_reply(claim: CallbackClaim, text: str) -> CallbackReply:
+    return CallbackReply(
+        text=text,
+        reply_markup=claim.original_reply_markup,
+        edit_message_id=claim.edit_message_id,
+        edit_markup_only=claim.edit_message_id is not None,
+    )
+
+
+def _gitlab_error_text(error: GitlabApiError) -> str:
+    if error.status_code == 401:
+        return "Token GitLab ditolak (401). Identity ditandai disconnected; reconnect dengan /gitlab."
+    if error.status_code == 409:
+        return "GitLab menolak karena state/HEAD SHA berubah. Muat ulang notifikasi sebelum mencoba lagi."
+    return f"GitLab menolak manual run ini (HTTP {error.status_code}): {_escape(str(error)[:300])}"
 
 
 def _sanitize_payload(value: Any, *, depth: int = 0) -> Any:

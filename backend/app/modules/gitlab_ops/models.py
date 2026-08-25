@@ -213,6 +213,8 @@ class GitlabNotificationMessageModel(TimestampMixin, Base):
     external_resource_id: Mapped[str] = mapped_column(String(255), nullable=False)
     telegram_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
     last_event_fingerprint: Mapped[str | None] = mapped_column(String(128))
+    last_status: Mapped[str | None] = mapped_column(String(32))
+    reply_markup: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class GitlabCallbackActionModel(TimestampMixin, Base):
@@ -229,6 +231,7 @@ class GitlabCallbackActionModel(TimestampMixin, Base):
     chat_id: Mapped[int] = mapped_column(ForeignKey("telegram_chats.id", ondelete="CASCADE"), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    processing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class GitlabAuditEventModel(Base):

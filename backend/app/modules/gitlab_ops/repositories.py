@@ -247,14 +247,19 @@ class GitlabOpsRepository:
     async def notification(self, session: AsyncSession, *, project_id: int, chat_id: int, resource_type: str, external_resource_id: str) -> GitlabNotificationMessageModel | None:
         return await session.scalar(select(GitlabNotificationMessageModel).where(GitlabNotificationMessageModel.project_id == project_id, GitlabNotificationMessageModel.telegram_chat_id == chat_id, GitlabNotificationMessageModel.resource_type == resource_type, GitlabNotificationMessageModel.external_resource_id == external_resource_id))
 
-    async def save_notification(self, session: AsyncSession, *, project_id: int, chat_id: int, resource_type: str, external_resource_id: str, message_id: int, fingerprint: str) -> GitlabNotificationMessageModel:
+    async def notification_by_message(self, session: AsyncSession, *, project_id: int, chat_id: int, message_id: int) -> GitlabNotificationMessageModel | None:
+        return await session.scalar(select(GitlabNotificationMessageModel).where(GitlabNotificationMessageModel.project_id == project_id, GitlabNotificationMessageModel.telegram_chat_id == chat_id, GitlabNotificationMessageModel.telegram_message_id == message_id))
+
+    async def save_notification(self, session: AsyncSession, *, project_id: int, chat_id: int, resource_type: str, external_resource_id: str, message_id: int, fingerprint: str, status: str | None, reply_markup: dict[str, Any] | None) -> GitlabNotificationMessageModel:
         model = await self.notification(session, project_id=project_id, chat_id=chat_id, resource_type=resource_type, external_resource_id=external_resource_id)
         if model is None:
-            model = GitlabNotificationMessageModel(project_id=project_id, telegram_chat_id=chat_id, resource_type=resource_type, external_resource_id=external_resource_id, telegram_message_id=message_id, last_event_fingerprint=fingerprint)
+            model = GitlabNotificationMessageModel(project_id=project_id, telegram_chat_id=chat_id, resource_type=resource_type, external_resource_id=external_resource_id, telegram_message_id=message_id, last_event_fingerprint=fingerprint, last_status=status, reply_markup=reply_markup)
             session.add(model)
         else:
             model.telegram_message_id = message_id
             model.last_event_fingerprint = fingerprint
+            model.last_status = status
+            model.reply_markup = reply_markup
         await session.flush()
         return model
 
